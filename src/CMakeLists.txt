@@ -1,0 +1,42 @@
+# Copyright 2010, Olivier Stasse, JRL, CNRS/AIST
+#
+# This file is part of FootStepPlanner-RTC.
+
+# The main library name
+SET(HRPRTC_HRP2_LIB_NAME ${PROJECT_NAME})
+
+#Build Foot Step Planner
+SET(LIBRARY_NAME ${HRPRTC_HRP2_LIB_NAME})
+
+# Foot Step Planner library sources
+SET(${LIBRARY_NAME}_SOURCES
+  rtc-stack-of-tasks.cpp
+)
+
+#GENERATE_IDLRTC_FILE(HumanoidDataTypes ${GRX_PREFIX}/include/rtm/idl)
+#INCLUDE_DIRECTORIES(${CMAKE_BINARY_DIR}/src/)
+
+ADD_LIBRARY(${LIBRARY_NAME}
+  SHARED
+  ${${LIBRARY_NAME}_SOURCES})
+
+SET_TARGET_PROPERTIES(${LIBRARY_NAME}
+  PROPERTIES
+  SOVERSION ${PROJECT_VERSION}
+  INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
+
+
+# Add grx_prefix in the include directory
+IF(GRX_PREFIX)
+  INCLUDE_DIRECTORIES(${GRX_PREFIX}/include/rtm/idl/)	
+  INCLUDE_DIRECTORIES(${GRX_PREFIX}/include/rtm/)	
+  INCLUDE_DIRECTORIES(${GRX_PREFIX}/include/)	
+  MESSAGE(STATUS "Included : ${GRX_PREFIX}/include/rtm/idl/")
+ENDIF(GRX_PREFIX)
+
+PKG_CONFIG_USE_DEPENDENCY(${LIBRARY_NAME} openrtm-aist)
+PKG_CONFIG_USE_COMPILE_DEPENDENCY(${LIBRARY_NAME} "sot-core")
+
+INSTALL(TARGETS ${LIBRARY_NAME} 
+  DESTINATION lib)
+
