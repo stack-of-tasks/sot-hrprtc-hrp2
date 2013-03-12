@@ -3,7 +3,7 @@
 # This file is part of FootStepPlanner-RTC.
 
 # The main library name
-SET(HRPRTC_HRP2_LIB_NAME ${PROJECT_NAME})
+SET(HRPRTC_HRP2_LIB_NAME "RtcStackOfTasks")
 
 #Build Foot Step Planner
 SET(LIBRARY_NAME ${HRPRTC_HRP2_LIB_NAME})

@@ -7,6 +7,13 @@
 #include "rtc-stack-of-tasks.h"
 #include <dlfcn.h>
 
+#if DEBUG
+#define ODEBUG(x) std::cout << x << std::endl
+#else
+#define ODEBUG(x)
+#endif
+#define ODEBUG3(x) std::cout << x << std::endl
+
 // Module specification
 // <rtc-template block="module_spec">
 static const char* RtcStackOfTasks_spec[] =
@@ -44,6 +51,9 @@ RtcStackOfTasks::RtcStackOfTasks(RTC::Manager* manager)
 
     // </rtc-template>
 {
+  coil::Properties config = manager->getConfig();
+  libname_ = config.getProperty("sot.libname");
+  ODEBUG3("The library to be loaded: " << libname_) ;
 }
 
 RtcStackOfTasks::~RtcStackOfTasks()
@@ -52,6 +62,7 @@ RtcStackOfTasks::~RtcStackOfTasks()
 
 void RtcStackOfTasks::LoadSot()
 {
+  ODEBUG3("LoadSot - Start");
   // Load the SotHRP2Controller library.
   void * SotHRP2ControllerLibrary = dlopen(libname_.c_str(),
                                            RTLD_GLOBAL | RTLD_NOW);
@@ -84,7 +95,8 @@ void RtcStackOfTasks::LoadSot()
   
   // Create hrp2-controller
   m_sotController = createHRP2Controller();
-  
+
+  ODEBUG3("LoadSot - End");  
 }
 RTC::ReturnCode_t RtcStackOfTasks::onInitialize()
 {
@@ -269,6 +281,7 @@ RTC::ReturnCode_t RtcStackOfTasks::onDeactivated(RTC::UniqueId ec_id)
 
 RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId ec_id)
 {
+  // 
   // Log control loop start time.
   captureTime (t0_);
   
@@ -323,10 +336,12 @@ extern "C"
  
   void RtcStackOfTasksInit(RTC::Manager* manager)
   {
+    std::cout << "RtcStackOfTasksInit - start " << std::endl;
     coil::Properties profile(RtcStackOfTasks_spec);
     manager->registerFactory(profile,
                              RTC::Create<RtcStackOfTasks>,
                              RTC::Delete<RtcStackOfTasks>);
+    std::cout << "RtcStackOfTasksInit - end " << std::endl;
   }
   
 };

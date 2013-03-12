@@ -3,7 +3,7 @@
 # This file is part of FootStePlannerRTC.
 
 # The component itself.
-SET(LTARGET rtc-stack-of-tasks)
+SET(LTARGET rtc-stack-of-tasks-comp)
 ADD_EXECUTABLE(${LTARGET}
   RtcStackOfTasksComp.cpp)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src)
@@ -20,7 +20,11 @@ PKG_CONFIG_USE_DEPENDENCY(${LTARGET} openrtm-aist)
 PKG_CONFIG_USE_DEPENDENCY(${LTARGET} openrtm-aist)
 PKG_CONFIG_USE_COMPILE_DEPENDENCY(${LTARGET} "sot-core")
 
-TARGET_LINK_LIBRARIES(${LTARGET} ${PROJECT_NAME})
+MESSAGE(STATUS "*********************************************")
+MESSAGE(STATUS "HRPRTC_HRP2_LIB_NAME :${HRPRTC_HRP2_LIB_NAME}")
+MESSAGE(STATUS "*********************************************")
+
+TARGET_LINK_LIBRARIES(${LTARGET} "RtcStackOfTasks")
 TARGET_LINK_LIBRARIES(${LTARGET} RTC)
 TARGET_LINK_LIBRARIES(${LTARGET} omniORB4)
 
