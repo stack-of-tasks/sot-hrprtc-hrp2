@@ -30,6 +30,9 @@ static const char* RtcStackOfTasks_spec[] =
     "language",          "C++",
     "lang_type",         "compile",
     // Configuration variables
+    "sot.libname",       "The library embedding the SoT controller",
+    "robot.nbdofs",      "The robot number of DoFs (including the Free Flyer)",
+    "robot.nbforce_sensors", "The robot number of 6 Axis Force Sensors",
     ""
   };
 // </rtc-template>
@@ -52,8 +55,15 @@ RtcStackOfTasks::RtcStackOfTasks(RTC::Manager* manager)
     // </rtc-template>
 {
   coil::Properties config = manager->getConfig();
-  libname_ = config.getProperty("sot.libname");
-  ODEBUG3("The library to be loaded: " << libname_) ;
+  robot_config.libname = config.getProperty("sot.libname");
+  ODEBUG3("The library to be loaded: " << robot_config.libname) ;
+  std::istringstream iss;
+  iss.str(config.getProperty("robot.nbdofs"));
+  iss >> robot_config.nb_dofs;
+  ODEBUG3("Nb dofs:" << robot_config.nb_dofs);
+  iss.str(config.getProperty("robot.nb_force_sensors"));
+  iss >> robot_config.nb_force_sensors;
+  ODEBUG3("Nb force sensors:" << robot_config.nb_force_sensors);
 }
 
 RtcStackOfTasks::~RtcStackOfTasks()
@@ -62,9 +72,8 @@ RtcStackOfTasks::~RtcStackOfTasks()
 
 void RtcStackOfTasks::LoadSot()
 {
-  ODEBUG3("LoadSot - Start");
   // Load the SotHRP2Controller library.
-  void * SotHRP2ControllerLibrary = dlopen(libname_.c_str(),
+  void * SotHRP2ControllerLibrary = dlopen(robot_config.libname.c_str(),
                                            RTLD_GLOBAL | RTLD_NOW);
   if (!SotHRP2ControllerLibrary) {
     std::cerr << "Cannot load library: " << dlerror() << '\n';
@@ -84,20 +93,12 @@ void RtcStackOfTasks::LoadSot()
     return ;
   }
   
-  destroySotExternalInterface_t * destroyHRP2Controller =
-    (destroySotExternalInterface_t *) dlsym(SotHRP2ControllerLibrary, 
-                                            "destroySotExternalInterface");
-  dlsym_error = dlerror();
-  if (dlsym_error) {
-    std::cerr << "Cannot load symbol create: " << dlsym_error << '\n';
-    return ;
-  }
   
   // Create hrp2-controller
   m_sotController = createHRP2Controller();
 
-  ODEBUG3("LoadSot - End");  
 }
+
 RTC::ReturnCode_t RtcStackOfTasks::onInitialize()
 {
   // Registration: InPort/OutPort/Service
@@ -130,76 +131,116 @@ RTC::ReturnCode_t RtcStackOfTasks::onInitialize()
 
   // <rtc-template block="bind_config">
   // Bind variables and configuration variable
-
+  /*
+  bindParameter("sot.libname", robot_config.libname, "libtherobot.so");
+  bindParameter("robot.nb_dofs",robot_config.nb_dofs, "0");
+  bindParameter("robot.nb_force_sensors",robot_config.nb_force_sensors, "0");*/
+  ODEBUG3("Nb dofs:" << robot_config.nb_dofs);
+  ODEBUG3("Nb force sensors:" << robot_config.nb_force_sensors);
   // </rtc-template>
   return RTC::RTC_OK;
+}
+
+void RtcStackOfTasks::
+fillInForceSensor(InPort<TimedDoubleSeq> &aForcePortIn,
+                  TimedDoubleSeq &aForceData,
+                  std::vector<double> &lforce,
+                  unsigned int index)
+{
+  if (aForcePortIn.isNew())
+    {
+      aForcePortIn.read();      
+      for (unsigned int j = 0; j < aForceData.data.length(); ++j)
+        lforce[index*6+j] = aForceData.data[j];
+    }
+  else
+    {
+      for (unsigned int j = 0; j < 6; ++j)
+        lforce[index*6+j] = 0.0;
+    }
+
 }
 
 void 
 RtcStackOfTasks::fillSensors(std::map<std::string,dgsot::SensorValues> & sensorsIn)
 {
   // Update joint values.
+  sensorsIn["joints"].setName("angle");
   if (m_angleEncoderIn.isNew())
     {
       m_angleEncoderIn.read();
       
-      sensorsIn["joints"].setName("angle");
+      std::cout << "m_angleEncoder.data.length()" 
+                << m_angleEncoder.data.length()
+                << std::endl;
+      angleEncoder_.resize(m_angleEncoder.data.length());
       for(unsigned int i=0;i<m_angleEncoder.data.length();i++)
         angleEncoder_[i] = m_angleEncoder.data[i];
-      sensorsIn["joints"].setValues(angleEncoder_);
     }
+  else 
+    {
+      angleEncoder_.resize(robot_config.nb_dofs);
+      for(unsigned int i=0;i<robot_config.nb_dofs;i++)
+        angleEncoder_[i] = 0.0;
+    }
+  sensorsIn["joints"].setValues(angleEncoder_);
   
   // Update forces
+  // TODO: Make sensors port add automatically
+  // They should be create by a CORBA service.
   sensorsIn["forces"].setName("force");
-  unsigned int i=0;
-  if (m_forcesLFIn.isNew())
-    {
-      m_forcesLFIn.read();
-      
-      for (unsigned int j = 0; j < m_forcesLF.data.length(); ++j)
-        forces_[i*6+j] = m_forcesLF.data[j];
-    }
-  
-  i=1;
-  if (m_forcesRFIn.isNew())
-    {
-      m_forcesRFIn.read();
-      
-      for (unsigned int j = 0; j < m_forcesRF.data.length(); ++j)
-        forces_[i*6+j] = m_forcesRF.data[j];
-    }
-
-  i=3;
-  if (m_forcesLHIn.isNew())
-    {
-      m_forcesLHIn.read();
-      
-      for (unsigned int j = 0; j < m_forcesLH.data.length(); ++j)
-        forces_[i*6+j] = m_forcesLF.data[j];
-    }
-  
-  i=4;
-  if (m_forcesRFIn.isNew())
-    {
-      m_forcesRFIn.read();
-      
-      for (unsigned int j = 0; j < m_forcesRH.data.length(); ++j)
-        forces_[i*6+j] = m_forcesRH.data[j];
-    }
-  
+  InPort<TimedDoubleSeq> * forcesIn[4];
+  forcesIn[0]=&m_forcesRFIn; forcesIn[1]=&m_forcesLFIn;
+  forcesIn[2]=&m_forcesRHIn; forcesIn[3]=&m_forcesLHIn;
+  TimedDoubleSeq *forcesData[4];
+  forcesData[0]=&m_forcesRF; forcesData[1]=& m_forcesLF; 
+  forcesData[2]=&m_forcesRH; forcesData[3]=& m_forcesLH;
+  forces_.resize(4*6);
+  for(unsigned int i=0;i<4;i++)
+    fillInForceSensor(*forcesIn[i],*forcesData[i], forces_,i);
   sensorsIn["forces"].setValues(forces_);
   
   // Update torque
   sensorsIn["torques"].setName("torque");
-  for (unsigned int j = 0; j < m_torques.data.length(); ++j)
-    torques_[j] = m_torques.data[j];
+  if (m_torquesIn.isNew())
+    {
+      
+      torques_.resize(m_torques.data.length());
+      for (unsigned int j = 0; j < m_torques.data.length(); ++j)
+        torques_[j] = m_torques.data[j];
+    }
+  else 
+    {
+      torques_.resize(robot_config.nb_dofs);
+      for(unsigned int i=0;i<robot_config.nb_dofs;i++)
+        torques_[i] = 0.0;
+    }
   sensorsIn["torques"].setValues(torques_);
-  
+
   // Update attitude
   sensorsIn["attitude"].setName("attitude");
-  for (unsigned int j = 0; j < m_baseAtt.data.length(); ++j)
-    baseAtt_ [j] = m_baseAtt.data[j];
+  if (m_baseAttIn.isNew())
+    {
+      baseAtt_.resize(m_baseAtt.data.length());
+      for (unsigned int j = 0; j < m_baseAtt.data.length(); ++j)
+        baseAtt_ [j] = m_baseAtt.data[j];
+    }
+  else
+    {
+      baseAtt_.resize(9);
+      for(unsigned int i=0;i<3;i++)
+        {
+          for(unsigned int j=0;j<3;j++)
+            {
+              if (i==j)
+                baseAtt_[i*3+j]=1.0;
+              else 
+                baseAtt_[i*3+j]=0.0;
+            }
+        }
+    }
   sensorsIn["attitude"].setValues (baseAtt_);
+
 }
 
 void 

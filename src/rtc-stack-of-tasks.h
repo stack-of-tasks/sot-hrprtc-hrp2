@@ -29,6 +29,19 @@
 using namespace RTC;
 namespace dgsot=dynamicgraph::sot;
 
+/** \brief Config variables
+ */
+struct robot_config_t
+{
+  /// \brief Name of the controller to load
+  std::string libname;
+  /// \brief Robot number of DoFs
+  unsigned int nb_dofs;
+  /// \brief Number of force sensors
+  unsigned int nb_force_sensors;
+  
+};
+
 class RtcStackOfTasks  : public RTC::DataFlowComponentBase
 {
  public:
@@ -159,11 +172,16 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
 
  private:
 
+  void fillInForceSensor(InPort<TimedDoubleSeq> &aForcePortIn,
+                         TimedDoubleSeq &aForceData,
+                         std::vector<double> &lforce,
+                         unsigned int index);
   /// \brief the sot-hrp2 controller
   dgsot::AbstractSotExternalInterface * m_sotController;
 
-  /// \brief Name of the controller to load
-  std::string libname_;
+  /// \brief Config variables 
+  robot_config_t robot_config;
+
   /// Map of sensor readings
   std::map<std::string,dgsot::SensorValues> sensorsIn_;
   /// Map of control values
