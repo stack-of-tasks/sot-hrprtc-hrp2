@@ -66,7 +66,7 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
 
   // The activated action (Active state entry action)
   // former rtc_active_entry()
-  // virtual RTC::ReturnCode_t onActivated(RTC::UniqueId ec_id);
+  virtual RTC::ReturnCode_t onActivated(RTC::UniqueId ec_id);
 
   // The deactivated action (Active state exit action)
   // former rtc_active_exit()
@@ -112,8 +112,16 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
   InPort<TimedDoubleSeq> m_torquesIn;
   TimedDoubleSeq m_baseAtt;
   InPort<TimedDoubleSeq> m_baseAttIn;
+  TimedDoubleSeq m_accelerometer_0;
+  InPort<TimedDoubleSeq> m_accelerometer_0In;
+  TimedDoubleSeq m_gyrometer_0;
+  InPort<TimedDoubleSeq> m_gyrometer_0In;
+    
+  // Kalman filter position.
   TimedDoubleSeq m_rpy;
   InPort<TimedDoubleSeq> m_rpyIn;
+
+  // Forces
   TimedDoubleSeq m_forcesLF;
   InPort<TimedDoubleSeq> m_forcesLFIn;
   TimedDoubleSeq m_forcesRF;
@@ -122,6 +130,14 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
   InPort<TimedDoubleSeq> m_forcesLHIn;
   TimedDoubleSeq m_forcesRH;
   InPort<TimedDoubleSeq> m_forcesRHIn;
+
+  // Initial state
+  TimedDoubleSeq m_angleInit;
+  InPort<TimedDoubleSeq> m_angleInitIn;
+  TimedDoubleSeq m_positionInit;
+  InPort<TimedDoubleSeq> m_positionInitIn;
+  TimedDoubleSeq m_rpyInit;
+  InPort<TimedDoubleSeq> m_rpyInitIn;
 
   // </rtc-template>
 
@@ -172,10 +188,17 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
 
  private:
 
+  /// \brief Update force sensor fields for SoT
   void fillInForceSensor(InPort<TimedDoubleSeq> &aForcePortIn,
                          TimedDoubleSeq &aForceData,
                          std::vector<double> &lforce,
                          unsigned int index);
+
+  /// \brief Update angles for SoT.
+  void fillAngles(std::map<std::string,dgsot::SensorValues> & 
+                  sensorsIn,
+                  bool initPort);
+
   /// \brief the sot-hrp2 controller
   dgsot::AbstractSotExternalInterface * m_sotController;
 
@@ -196,6 +219,10 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
   std::vector<double> torques_;
   /// Attitude of the robot computed by extended Kalman filter.
   std::vector<double> baseAtt_;
+  /// Accelerometer information.
+  std::vector<double> accelerometer_;
+  /// Gyrometer information.
+  std::vector<double> gyrometer_;  
 
   /// \brief Timestamp matching the beginning of the control
   /// loop.

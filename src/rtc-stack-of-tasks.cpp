@@ -43,11 +43,16 @@ RtcStackOfTasks::RtcStackOfTasks(RTC::Manager* manager)
     m_angleEncoderIn("angleEncoder", m_angleEncoder),
     m_torquesIn("torques", m_torques),
     m_baseAttIn("baseAtt", m_baseAtt),
+    m_accelerometer_0In("accelerometer_0",m_accelerometer_0),
+    m_gyrometer_0In("gyrometer_0",m_gyrometer_0),
     m_rpyIn("rpy", m_rpy),
     m_forcesLFIn("forcesLF", m_forcesLF),
     m_forcesRFIn("forcesRF", m_forcesRF),
     m_forcesLHIn("forcesLH", m_forcesLH),
     m_forcesRHIn("forcesRH", m_forcesRH),
+    m_angleInitIn("qInit",m_angleInit),
+    m_positionInitIn("pInit",m_positionInit),
+    m_rpyInitIn("rpyInit",m_rpyInit),
     m_zmpRefOut("zmpRef", m_zmpRef),
     m_qRefOut("qRef", m_qRef),
     m_accRefOut("accRef", m_accRef)
@@ -107,11 +112,16 @@ RTC::ReturnCode_t RtcStackOfTasks::onInitialize()
   addInPort("angleEncoder", m_angleEncoderIn);
   addInPort("torques", m_torquesIn);
   addInPort("baseAtt", m_baseAttIn);
+  addInPort("accelerometer_0",m_accelerometer_0In);
+  addInPort("gyrometer_0",m_gyrometer_0In);
   addInPort("rpy", m_rpyIn);
   addInPort("forcesLF", m_forcesLFIn);
   addInPort("forcesRF", m_forcesRFIn);
   addInPort("forcesLH", m_forcesLHIn);
   addInPort("forcesRH", m_forcesRHIn);
+  addInPort("qInit",m_angleInitIn);
+  addInPort("pInit",m_positionInitIn);
+  addInPort("rpyInit",m_rpyInitIn);
 
   // Set OutPort buffer
   addOutPort("zmpRef", m_zmpRefOut);
@@ -138,6 +148,12 @@ RTC::ReturnCode_t RtcStackOfTasks::onInitialize()
   ODEBUG3("Nb dofs:" << robot_config.nb_dofs);
   ODEBUG3("Nb force sensors:" << robot_config.nb_force_sensors);
   // </rtc-template>
+
+  // Initialize angleEncoder_ to zero.
+  angleEncoder_.resize(robot_config.nb_dofs);
+  for(unsigned int i=0;i<robot_config.nb_dofs;i++)
+    angleEncoder_[i] = 0.0;
+  
   return RTC::RTC_OK;
 }
 
@@ -161,30 +177,39 @@ fillInForceSensor(InPort<TimedDoubleSeq> &aForcePortIn,
 
 }
 
-void 
-RtcStackOfTasks::fillSensors(std::map<std::string,dgsot::SensorValues> & sensorsIn)
+void RtcStackOfTasks::fillAngles(std::map<std::string,dgsot::SensorValues> & 
+                                 sensorsIn,
+                                 bool initPort)
 {
+  InPort<TimedDoubleSeq> * langlePortIn=&m_angleEncoderIn;
+  TimedDoubleSeq * langlePort=&m_angleEncoder;
+  if (initPort)
+    {
+      langlePortIn = &m_angleInitIn;
+      langlePort = &m_angleInit;
+    }
   // Update joint values.
   sensorsIn["joints"].setName("angle");
-  if (m_angleEncoderIn.isNew())
+  if (langlePortIn->isNew())
     {
-      m_angleEncoderIn.read();
+      langlePortIn->read();
       
-      std::cout << "m_angleEncoder.data.length()" 
-                << m_angleEncoder.data.length()
+      std::cout << "langlePort.data.length()" 
+                << langlePort->data.length()
                 << std::endl;
-      angleEncoder_.resize(m_angleEncoder.data.length());
-      for(unsigned int i=0;i<m_angleEncoder.data.length();i++)
-        angleEncoder_[i] = m_angleEncoder.data[i];
-    }
-  else 
-    {
-      angleEncoder_.resize(robot_config.nb_dofs);
-      for(unsigned int i=0;i<robot_config.nb_dofs;i++)
-        angleEncoder_[i] = 0.0;
+      angleEncoder_.resize(langlePort->data.length());
+      for(unsigned int i=0;i<langlePort->data.length();i++)
+        angleEncoder_[i] = langlePort->data[i];
     }
   sensorsIn["joints"].setValues(angleEncoder_);
-  
+}
+
+void 
+RtcStackOfTasks::fillSensors(std::map<std::string,dgsot::SensorValues> & 
+                             sensorsIn)
+{
+  fillAngles(sensorsIn_,false);
+
   // Update forces
   // TODO: Make sensors port add automatically
   // They should be create by a CORBA service.
@@ -241,6 +266,39 @@ RtcStackOfTasks::fillSensors(std::map<std::string,dgsot::SensorValues> & sensors
     }
   sensorsIn["attitude"].setValues (baseAtt_);
 
+  // Update accelerometer
+  sensorsIn["accelerometer_0"].setName("accelerometer_0");
+  if (m_accelerometer_0In.isNew())
+    {
+      
+      accelerometer_.resize(m_accelerometer_0.data.length());
+      for (unsigned int j = 0; j < m_accelerometer_0.data.length(); ++j)
+        accelerometer_[j] = m_accelerometer_0.data[j];
+    }
+  else 
+    {
+      accelerometer_.resize(3);
+      for(unsigned int i=0;i<3;i++)
+        accelerometer_[i] = 0.0;
+    }  
+  sensorsIn["accelerometer_0"].setValues(accelerometer_);
+  
+  // Update gyrometer
+  sensorsIn["gyrometer_0"].setName("gyrometer_0");
+  if (m_gyrometer_0In.isNew())
+    {
+      
+      gyrometer_.resize(m_gyrometer_0.data.length());
+      for (unsigned int j = 0; j < m_gyrometer_0.data.length(); ++j)
+        gyrometer_[j] = m_gyrometer_0.data[j];
+    }
+  else 
+    {
+      gyrometer_.resize(3);
+      for(unsigned int i=0;i<3;i++)
+        gyrometer_[i] = 0.0;
+    }  
+  sensorsIn["gyrometer_0"].setValues(gyrometer_);
 }
 
 void 
@@ -307,12 +365,13 @@ RTC::ReturnCode_t RtcStackOfTasks::onShutdown(RTC::UniqueId ec_id)
   return RTC::RTC_OK;
 }
 */
-/*
-RTC::ReturnCode_t RtcStackOfTasks::onActivated(RTC::UniqueId ec_id)
+
+RTC::ReturnCode_t RtcStackOfTasks::onActivated(RTC::UniqueId /* ec_id */)
 {
+  fillAngles(sensorsIn_,true);
   return RTC::RTC_OK;
 }
-*/
+
 /*
 RTC::ReturnCode_t RtcStackOfTasks::onDeactivated(RTC::UniqueId ec_id)
 {
@@ -320,8 +379,9 @@ RTC::ReturnCode_t RtcStackOfTasks::onDeactivated(RTC::UniqueId ec_id)
 }
 */
 
-RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId ec_id)
+RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId /* ec_id */)
 {
+  ODEBUG3("onExecute - start");
   // 
   // Log control loop start time.
   captureTime (t0_);
@@ -338,6 +398,7 @@ RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId ec_id)
   // Log control loop end time and compute time spent.
   captureTime (t1_);
   logTime (t0_, t1_);
+  ODEBUG3("onExecute - end");
   return RTC::RTC_OK;
 }
 /*
