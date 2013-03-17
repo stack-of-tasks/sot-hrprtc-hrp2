@@ -42,6 +42,14 @@ struct robot_config_t
   
 };
 
+/** \brief Roll-Pitch-Yaw vector */
+struct RpyVector
+{
+  double roll;
+  double pitch;
+  double yaw;
+};
+
 class RtcStackOfTasks  : public RTC::DataFlowComponentBase
 {
  public:
@@ -58,7 +66,7 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
 
   // The startup action when ExecutionContext startup
   // former rtc_starting_entry()
-  // virtual RTC::ReturnCode_t onStartup(RTC::UniqueId ec_id);
+  virtual RTC::ReturnCode_t onStartup(RTC::UniqueId ec_id);
 
   // The shutdown action when ExecutionContext stop
   // former rtc_stopping_entry()
@@ -147,6 +155,10 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
   OutPort<TimedDoubleSeq> m_zmpRefOut;
   TimedDoubleSeq m_qRef;
   OutPort<TimedDoubleSeq> m_qRefOut;
+  TimedDoubleSeq m_pRef;
+  OutPort<TimedDoubleSeq> m_pRefOut;
+  TimedDoubleSeq m_rpyRef;
+  OutPort<TimedDoubleSeq> m_rpyRefOut;
   TimedDoubleSeq m_accRef;
   OutPort<TimedDoubleSeq> m_accRefOut;
 
@@ -198,6 +210,12 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
   void fillAngles(std::map<std::string,dgsot::SensorValues> & 
                   sensorsIn,
                   bool initPort);
+  
+  /// \brief From rotation to RPY
+  void fromRotationToRpy(double *R, RpyVector &aRpyVector);
+
+  /// \brief Read config variables
+  void readConfig();
 
   /// \brief the sot-hrp2 controller
   dgsot::AbstractSotExternalInterface * m_sotController;
@@ -238,6 +256,9 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
   /// \brief First unfilled item in timeArray.
   unsigned int timeIndex_;
   
+  RTC::Manager *manager_;
+
+  bool initialize_library_;
 };
 
 

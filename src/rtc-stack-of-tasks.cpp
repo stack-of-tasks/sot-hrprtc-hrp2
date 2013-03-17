@@ -6,6 +6,10 @@
  */
 #include "rtc-stack-of-tasks.h"
 #include <dlfcn.h>
+#include <cmath>
+#include <fstream>
+#include <exception>
+#include <iomanip>
 
 #if DEBUG
 #define ODEBUG(x) std::cout << x << std::endl
@@ -13,6 +17,22 @@
 #define ODEBUG(x)
 #endif
 #define ODEBUG3(x) std::cout << x << std::endl
+
+#define DBGFILE "/tmp/rtc-stack-of-tasks-comp"
+#define RESETDEBUG5() { std::ofstream DebugFile; \
+    DebugFile.open(DBGFILE,std::ofstream::out);  \
+DebugFile.close();}
+#define ODEBUG5FULL(x) { std::ofstream DebugFile; \
+    DebugFile.open(DBGFILE,std::ofstream::app);   \
+DebugFile << __FILE__ << ":" \
+          << __FUNCTION__ << "(#" \
+          << __LINE__ << "):" << x << std::endl; \
+          DebugFile.close();}
+#define ODEBUG5(x) { std::ofstream DebugFile; \
+    DebugFile.open(DBGFILE,std::ofstream::app); \
+DebugFile << x << std::endl; \
+          DebugFile.close();}
+
 
 // Module specification
 // <rtc-template block="module_spec">
@@ -30,9 +50,9 @@ static const char* RtcStackOfTasks_spec[] =
     "language",          "C++",
     "lang_type",         "compile",
     // Configuration variables
-    "sot.libname",       "The library embedding the SoT controller",
-    "robot.nbdofs",      "The robot number of DoFs (including the Free Flyer)",
-    "robot.nbforce_sensors", "The robot number of 6 Axis Force Sensors",
+    "conf.default.sot_libname",       "librobot.so",
+    "conf.default.robot_nb_dofs",      "0",
+    "conf.default.robot_nb_force_sensors", "0",
     ""
   };
 // </rtc-template>
@@ -55,36 +75,46 @@ RtcStackOfTasks::RtcStackOfTasks(RTC::Manager* manager)
     m_rpyInitIn("rpyInit",m_rpyInit),
     m_zmpRefOut("zmpRef", m_zmpRef),
     m_qRefOut("qRef", m_qRef),
-    m_accRefOut("accRef", m_accRef)
-
+    m_pRefOut("pRef", m_pRef),
+    m_rpyRefOut("rpyRef", m_rpyRef),
+    m_accRefOut("accRef", m_accRef),
+    manager_(manager),
+    initialize_library_(false)
     // </rtc-template>
 {
-  coil::Properties config = manager->getConfig();
-  robot_config.libname = config.getProperty("sot.libname");
-  ODEBUG3("The library to be loaded: " << robot_config.libname) ;
-  std::istringstream iss;
-  iss.str(config.getProperty("robot.nbdofs"));
-  iss >> robot_config.nb_dofs;
-  ODEBUG3("Nb dofs:" << robot_config.nb_dofs);
-  iss.str(config.getProperty("robot.nb_force_sensors"));
-  iss >> robot_config.nb_force_sensors;
-  ODEBUG3("Nb force sensors:" << robot_config.nb_force_sensors);
+  RESETDEBUG5();
 }
 
 RtcStackOfTasks::~RtcStackOfTasks()
 {
 }
 
+void RtcStackOfTasks::readConfig()
+{
+  ODEBUG5("The library to be loaded: " << robot_config.libname) ;
+  ODEBUG5("Nb dofs:" << robot_config.nb_dofs);
+  ODEBUG5("Nb force sensors:" << robot_config.nb_force_sensors);
+}
+
 void RtcStackOfTasks::LoadSot()
 {
+  char * sLD_LIBRARY_PATH;
+  sLD_LIBRARY_PATH=getenv("LD_LIBRARY_PATH");
+  ODEBUG5("LoadSot - Start " << sLD_LIBRARY_PATH);
+  char * sPYTHONPATH;
+  sPYTHONPATH=getenv("PYTHONPATH");
+  ODEBUG5("PYTHONPATH:" << sPYTHONPATH);
+  sPYTHONPATH=getenv("PYTHON_PATH");
+  ODEBUG5("PYTHON_PATH:" << sPYTHONPATH);
+
   // Load the SotHRP2Controller library.
   void * SotHRP2ControllerLibrary = dlopen(robot_config.libname.c_str(),
                                            RTLD_GLOBAL | RTLD_NOW);
   if (!SotHRP2ControllerLibrary) {
-    std::cerr << "Cannot load library: " << dlerror() << '\n';
+    ODEBUG5("Cannot load library: " << dlerror() );
     return ;
   }
-  
+  ODEBUG5("Success in loading the library:" << robot_config.libname);
   // reset errors
   dlerror();
   
@@ -92,16 +122,31 @@ void RtcStackOfTasks::LoadSot()
   createSotExternalInterface_t * createHRP2Controller =
     (createSotExternalInterface_t *) dlsym(SotHRP2ControllerLibrary, 
                                            "createSotExternalInterface");
+  ODEBUG5("createHRP2Controller call "<< std::hex 
+          << reinterpret_cast<int>(createHRP2Controller)
+          << std::setbase(10));
   const char* dlsym_error = dlerror();
   if (dlsym_error) {
-    std::cerr << "Cannot load symbol create: " << dlsym_error << '\n';
+    ODEBUG5("Cannot load symbol create: " << dlsym_error );
     return ;
   }
-  
+  ODEBUG5("Success in getting the controller factory");
   
   // Create hrp2-controller
-  m_sotController = createHRP2Controller();
+  try 
+    {
+      ODEBUG5("exception handled createHRP2Controller call "<< std::hex 
+              << reinterpret_cast<int>(createHRP2Controller)
+              << std::setbase(10));
+      m_sotController = createHRP2Controller();
+      ODEBUG5("After createHRP2Controller.");
 
+    } 
+  catch (std::exception &e)
+    {
+      ODEBUG5("Exception: " << e.what());
+    }
+  ODEBUG5("LoadSot - End");
 }
 
 RTC::ReturnCode_t RtcStackOfTasks::onInitialize()
@@ -126,10 +171,9 @@ RTC::ReturnCode_t RtcStackOfTasks::onInitialize()
   // Set OutPort buffer
   addOutPort("zmpRef", m_zmpRefOut);
   addOutPort("qRef", m_qRefOut);
+  addOutPort("pRef", m_pRefOut);
   addOutPort("accRef", m_accRefOut);
-  
-  // Load Stack of Tasks.
-  LoadSot();
+  addOutPort("rpyRef", m_rpyRefOut);
 
   // Set service provider to Ports
 
@@ -141,12 +185,12 @@ RTC::ReturnCode_t RtcStackOfTasks::onInitialize()
 
   // <rtc-template block="bind_config">
   // Bind variables and configuration variable
-  /*
-  bindParameter("sot.libname", robot_config.libname, "libtherobot.so");
-  bindParameter("robot.nb_dofs",robot_config.nb_dofs, "0");
-  bindParameter("robot.nb_force_sensors",robot_config.nb_force_sensors, "0");*/
-  ODEBUG3("Nb dofs:" << robot_config.nb_dofs);
-  ODEBUG3("Nb force sensors:" << robot_config.nb_force_sensors);
+  bindParameter("sot_libname", robot_config.libname, "libtherobot.so");
+  bindParameter("robot_nb_dofs",robot_config.nb_dofs, "0");
+  bindParameter("robot_nb_force_sensors",robot_config.nb_force_sensors, "0");
+
+  ODEBUG5("Nb dofs:" << robot_config.nb_dofs);
+  ODEBUG5("Nb force sensors:" << robot_config.nb_force_sensors);
   // </rtc-template>
 
   // Initialize angleEncoder_ to zero.
@@ -194,14 +238,40 @@ void RtcStackOfTasks::fillAngles(std::map<std::string,dgsot::SensorValues> &
     {
       langlePortIn->read();
       
-      std::cout << "langlePort.data.length()" 
-                << langlePort->data.length()
-                << std::endl;
       angleEncoder_.resize(langlePort->data.length());
       for(unsigned int i=0;i<langlePort->data.length();i++)
         angleEncoder_[i] = langlePort->data[i];
     }
   sensorsIn["joints"].setValues(angleEncoder_);
+}
+
+void RtcStackOfTasks::fromRotationToRpy(double *R, RpyVector &aRpyVector)
+{
+  double alpha,beta,gamma;
+  
+  beta = atan2(-R[2*3+0], sqrt(R[0]*R[0] + R[1*3]*R[1*3]));
+  if (beta==M_PI/2.0)
+    {
+      alpha = 0;
+      gamma = atan2(R[1], R[1*3+1]);
+    }
+  else
+    {
+      if (beta==-M_PI/2)
+        {
+          alpha = 0.0;
+          gamma = -atan2(R[1], R[0]);
+        }
+      else
+        {
+          alpha = atan2(R[1*3]/cos(beta), R[0]/cos(beta));
+          gamma = atan2(R[2*3+1]/cos(beta), R[2*3+2]/cos(beta));
+        }
+    }
+
+  aRpyVector.roll = gamma;
+  aRpyVector.pitch = beta;
+  aRpyVector.yaw = alpha;
 }
 
 void 
@@ -304,30 +374,44 @@ RtcStackOfTasks::fillSensors(std::map<std::string,dgsot::SensorValues> &
 void 
 RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &controlValues)
 {
+  double R[9];
+
   // Update joint values.
   angleControl_ = controlValues["joints"].getValues();
   
   m_qRef.data.length(angleControl_.size());
   for(unsigned int i=0;i<angleControl_.size();i++)
-    { m_qRef.data[i] = angleControl_[i]; }
-    
+    { 
+      m_qRef.data[i] = angleControl_[i]; 
+    }
+
+  // Update torque
+  const std::vector<double>& baseff =
+    controlValues["baseff"].getValues();
+  
+
+  m_pRef.data.length(3);
+  for(unsigned int i=0;i<3;i++)
+    { m_pRef.data[i] = baseff[i*4+3]; }
+
+  for(unsigned int i=0;i<3;++i)
+    for (int j = 0; j < 3; ++j)
+      R[i*3+j] = baseff[i*4+j];
+  
+  RpyVector arpyv;
+  fromRotationToRpy(R,arpyv);
+
+  m_rpyRef.data.length(3);
+  m_rpyRef.data[0] = arpyv.roll;
+  m_rpyRef.data[1] = arpyv.pitch;
+  m_rpyRef.data[2] = arpyv.yaw;
+  
   // Update forces
   const std::vector<double>& zmp (controlValues["zmp"].getValues());
   m_zmpRef.data.length(zmp.size());
   for(unsigned int i=0;i<3;i++)
     m_zmpRef.data[i] = zmp[i];
   
-  // Update torque
-  const std::vector<double>& baseff =
-    controlValues["baseff"].getValues();
-
-  m_baseAtt.data.length(baseff.size());
-  for (int j = 0; j < 3; ++j)
-    m_baseAtt.data[j] = baseff[j*4+3];
-  
-  for(unsigned int i=0;i<3;++i)
-    for (int j = 0; j < 3; ++j)
-      m_baseAtt.data[i*3+j] = baseff[i*4+j];
 }
 
 void
@@ -353,12 +437,12 @@ RTC::ReturnCode_t RtcStackOfTasks::onFinalize()
   return RTC::RTC_OK;
 }
 */
-/*
-RTC::ReturnCode_t RtcStackOfTasks::onStartup(RTC::UniqueId ec_id)
+
+RTC::ReturnCode_t RtcStackOfTasks::onStartup(RTC::UniqueId /* ec_id*/)
 {
   return RTC::RTC_OK;
 }
-*/
+
 /*
 RTC::ReturnCode_t RtcStackOfTasks::onShutdown(RTC::UniqueId ec_id)
 {
@@ -368,7 +452,6 @@ RTC::ReturnCode_t RtcStackOfTasks::onShutdown(RTC::UniqueId ec_id)
 
 RTC::ReturnCode_t RtcStackOfTasks::onActivated(RTC::UniqueId /* ec_id */)
 {
-  fillAngles(sensorsIn_,true);
   return RTC::RTC_OK;
 }
 
@@ -381,7 +464,16 @@ RTC::ReturnCode_t RtcStackOfTasks::onDeactivated(RTC::UniqueId ec_id)
 
 RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId /* ec_id */)
 {
-  ODEBUG3("onExecute - start");
+  ODEBUG5("onExecute - start");
+  ODEBUG5("Active configuration set:");
+  if (!initialize_library_)
+    {
+      readConfig();
+      LoadSot();
+      initialize_library_ = true;
+    }
+
+  ODEBUG5(m_configsets.getActiveId());
   // 
   // Log control loop start time.
   captureTime (t0_);
@@ -398,7 +490,7 @@ RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId /* ec_id */)
   // Log control loop end time and compute time spent.
   captureTime (t1_);
   logTime (t0_, t1_);
-  ODEBUG3("onExecute - end");
+  ODEBUG5("onExecute - end");
   return RTC::RTC_OK;
 }
 /*
