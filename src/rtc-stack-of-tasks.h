@@ -109,6 +109,11 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
  protected:
   // Configuration variable declaration
   // <rtc-template block="config_declare">
+  /// \brief Config variables 
+  robot_config_t robot_config_;
+
+  /// \brief Starting the controller.
+  bool started_;
   
   // </rtc-template>
 
@@ -124,7 +129,8 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
   InPort<TimedDoubleSeq> m_accelerometer_0In;
   TimedDoubleSeq m_gyrometer_0;
   InPort<TimedDoubleSeq> m_gyrometer_0In;
-    
+  TimedDoubleSeq m_qInit;
+
   // Kalman filter position.
   TimedDoubleSeq m_rpy;
   InPort<TimedDoubleSeq> m_rpyIn;
@@ -219,9 +225,6 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
 
   /// \brief the sot-hrp2 controller
   dgsot::AbstractSotExternalInterface * m_sotController;
-
-  /// \brief Config variables 
-  robot_config_t robot_config;
 
   /// Map of sensor readings
   std::map<std::string,dgsot::SensorValues> sensorsIn_;

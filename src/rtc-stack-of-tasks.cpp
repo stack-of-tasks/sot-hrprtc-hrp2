@@ -53,6 +53,7 @@ static const char* RtcStackOfTasks_spec[] =
     "conf.default.sot_libname",       "librobot.so",
     "conf.default.robot_nb_dofs",      "0",
     "conf.default.robot_nb_force_sensors", "0",
+    "conf.default.is_enabled", "0",
     ""
   };
 // </rtc-template>
@@ -91,9 +92,9 @@ RtcStackOfTasks::~RtcStackOfTasks()
 
 void RtcStackOfTasks::readConfig()
 {
-  ODEBUG5("The library to be loaded: " << robot_config.libname) ;
-  ODEBUG5("Nb dofs:" << robot_config.nb_dofs);
-  ODEBUG5("Nb force sensors:" << robot_config.nb_force_sensors);
+  ODEBUG5("The library to be loaded: " << robot_config_.libname) ;
+  ODEBUG5("Nb dofs:" << robot_config_.nb_dofs);
+  ODEBUG5("Nb force sensors:" << robot_config_.nb_force_sensors);
 }
 
 void RtcStackOfTasks::LoadSot()
@@ -108,13 +109,13 @@ void RtcStackOfTasks::LoadSot()
   ODEBUG5("PYTHON_PATH:" << sPYTHONPATH);
 
   // Load the SotHRP2Controller library.
-  void * SotHRP2ControllerLibrary = dlopen(robot_config.libname.c_str(),
+  void * SotHRP2ControllerLibrary = dlopen(robot_config_.libname.c_str(),
                                            RTLD_GLOBAL | RTLD_NOW);
   if (!SotHRP2ControllerLibrary) {
     ODEBUG5("Cannot load library: " << dlerror() );
     return ;
   }
-  ODEBUG5("Success in loading the library:" << robot_config.libname);
+  ODEBUG5("Success in loading the library:" << robot_config_.libname);
   // reset errors
   dlerror();
   
@@ -185,17 +186,18 @@ RTC::ReturnCode_t RtcStackOfTasks::onInitialize()
 
   // <rtc-template block="bind_config">
   // Bind variables and configuration variable
-  bindParameter("sot_libname", robot_config.libname, "libtherobot.so");
-  bindParameter("robot_nb_dofs",robot_config.nb_dofs, "0");
-  bindParameter("robot_nb_force_sensors",robot_config.nb_force_sensors, "0");
+  bindParameter("sot_libname", robot_config_.libname, "libtherobot.so");
+  bindParameter("robot_nb_dofs",robot_config_.nb_dofs, "0");
+  bindParameter("robot_nb_force_sensors",robot_config_.nb_force_sensors, "0");
+  bindParameter("is_enabled",started_,"0");
 
-  ODEBUG5("Nb dofs:" << robot_config.nb_dofs);
-  ODEBUG5("Nb force sensors:" << robot_config.nb_force_sensors);
+  ODEBUG5("Nb dofs:" << robot_config_.nb_dofs);
+  ODEBUG5("Nb force sensors:" << robot_config_.nb_force_sensors);
   // </rtc-template>
 
   // Initialize angleEncoder_ to zero.
-  angleEncoder_.resize(robot_config.nb_dofs);
-  for(unsigned int i=0;i<robot_config.nb_dofs;i++)
+  angleEncoder_.resize(robot_config_.nb_dofs);
+  for(unsigned int i=0;i<robot_config_.nb_dofs;i++)
     angleEncoder_[i] = 0.0;
   
   return RTC::RTC_OK;
@@ -229,6 +231,7 @@ void RtcStackOfTasks::fillAngles(std::map<std::string,dgsot::SensorValues> &
   TimedDoubleSeq * langlePort=&m_angleEncoder;
   if (initPort)
     {
+      ODEBUG5("Read Init Port");
       langlePortIn = &m_angleInitIn;
       langlePort = &m_angleInit;
     }
@@ -240,7 +243,11 @@ void RtcStackOfTasks::fillAngles(std::map<std::string,dgsot::SensorValues> &
       
       angleEncoder_.resize(langlePort->data.length());
       for(unsigned int i=0;i<langlePort->data.length();i++)
-        angleEncoder_[i] = langlePort->data[i];
+        {
+          angleEncoder_[i] = langlePort->data[i];
+          if (initPort)
+            ODEBUG5("qInit:["<<i << "]= " << langlePort->data[i]);
+        }
     }
   sensorsIn["joints"].setValues(angleEncoder_);
 }
@@ -306,8 +313,8 @@ RtcStackOfTasks::fillSensors(std::map<std::string,dgsot::SensorValues> &
     }
   else 
     {
-      torques_.resize(robot_config.nb_dofs);
-      for(unsigned int i=0;i<robot_config.nb_dofs;i++)
+      torques_.resize(robot_config_.nb_dofs);
+      for(unsigned int i=0;i<robot_config_.nb_dofs;i++)
         torques_[i] = 0.0;
     }
   sensorsIn["torques"].setValues(torques_);
@@ -376,15 +383,36 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
 {
   double R[9];
 
+  RTC::Time tm;
+    
+  coil::TimeValue coiltm(coil::gettimeofday());
+  tm.sec = coiltm.sec();
+  tm.nsec = coiltm.usec()*1000;
+  
   // Update joint values.
   angleControl_ = controlValues["joints"].getValues();
   
-  m_qRef.data.length(angleControl_.size());
+  m_qRef.data.length(robot_config_.nb_dofs);
   for(unsigned int i=0;i<angleControl_.size();i++)
     { 
       m_qRef.data[i] = angleControl_[i]; 
+      ODEBUG5("m_qRef["<<i<<"]=" << m_qRef.data[i]);
     }
-
+  if (angleControl_.size()<robot_config_.nb_dofs)
+    {
+      for(unsigned int i=angleControl_.size();
+          i<robot_config_.nb_dofs
+            ;i++)
+        {
+          m_qRef.data[i] = 0.0;
+          ODEBUG5("m_qRef["<<i<<"]=" << m_qRef.data[i]);
+        }
+    }
+  m_qRef.tm = tm;
+  m_qRefOut.write();
+ 
+  
+  
   // Update torque
   const std::vector<double>& baseff =
     controlValues["baseff"].getValues();
@@ -393,25 +421,38 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
   m_pRef.data.length(3);
   for(unsigned int i=0;i<3;i++)
     { m_pRef.data[i] = baseff[i*4+3]; }
+  m_pRefOut.tm = tm;
+  m_pRefOut.write(m_pRef);
 
+  for(unsigned int i=0;i<3;i++)
+    ODEBUG5("m_pRef" << m_pRef.data[i]);  
   for(unsigned int i=0;i<3;++i)
     for (int j = 0; j < 3; ++j)
       R[i*3+j] = baseff[i*4+j];
   
   RpyVector arpyv;
   fromRotationToRpy(R,arpyv);
-
+  
   m_rpyRef.data.length(3);
   m_rpyRef.data[0] = arpyv.roll;
   m_rpyRef.data[1] = arpyv.pitch;
   m_rpyRef.data[2] = arpyv.yaw;
-  
+  m_rpyRefOut.write(m_rpy);
+  for(unsigned int i=0;i<3;i++)
+    ODEBUG5("m_rpyRef["<< i << "]=" << m_rpyRef.data[i]);  
   // Update forces
   const std::vector<double>& zmp (controlValues["zmp"].getValues());
   m_zmpRef.data.length(zmp.size());
   for(unsigned int i=0;i<3;i++)
-    m_zmpRef.data[i] = zmp[i];
-  
+    {
+      m_zmpRef.data[i] = zmp[i];
+    }
+  ODEBUG5("m_zmpRef: " << m_zmpRef.data[0] << " "
+          << m_zmpRef.data[1] << " "
+          << m_zmpRef.data[2] << " ");
+
+  m_zmpRefOut.tm = tm;
+  m_zmpRefOut.write(m_zmpRef);
 }
 
 void
@@ -470,7 +511,15 @@ RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId /* ec_id */)
     {
       readConfig();
       LoadSot();
+      if (m_angleInitIn.isNew())
+        fillAngles(sensorsIn_,true);
       initialize_library_ = true;
+    }
+
+  if (!started_)
+    {
+      ODEBUG5("started_ property not set.");
+      return RTC::RTC_OK;      
     }
 
   ODEBUG5(m_configsets.getActiveId());
@@ -484,8 +533,10 @@ RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId /* ec_id */)
       m_sotController->setupSetSensors(sensorsIn_);
       m_sotController->getControl(controlValues_);
     } 
-  catch (std::exception &e) {  std::cout << e.what() <<std::endl;throw e; }
+  catch (std::exception &e) {  ODEBUG5("Exception: e.what()");throw e; }
+  ODEBUG5("Before reading control");
   readControl(controlValues_);
+  ODEBUG5("After reading control");
 
   // Log control loop end time and compute time spent.
   captureTime (t1_);
