@@ -36,13 +36,24 @@ FIND_PATH(GRX_PREFIX
 
 IF(!GRX_PREFIX)
   MESSAGE(ERROR "Dit not find GRX_PREFIX")
+ELSE(!GRX_PREFIX)
+  SET(ROBOT "" CACHE STRING "GRX robot name (HRP2JRL or HRP2LAAS)")
+  SET(ROBOT_PATH "${GRX_PREFIX}/${ROBOT}")
+  IF(ROBOT STREQUAL "")
+    MESSAGE(FATAL_ERROR
+      "The ROBOT mandatory configuration variable is not set.")
+  ENDIF() 
+  IF(NOT IS_DIRECTORY ${ROBOT_PATH})
+    MESSAGE(FATAL_ERROR
+      "The directory '${ROBOT_PATH}' does not exist."
+      "Please check the ROBOT configuration variable.")
+  ENDIF()
 ENDIF(!GRX_PREFIX)
 
-SET(ROBOT "" CACHE STRING "GRX robot name (HRP2JRL or HRP2LAAS)")
-SET(ROBOT_PATH "${GRX_PREFIX}/${ROBOT}")
 
 ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(components)
+ADD_SUBDIRECTORY(scripts)
 
 SETUP_PROJECT_FINALIZE()
 SETUP_PROJECT_CPACK()
