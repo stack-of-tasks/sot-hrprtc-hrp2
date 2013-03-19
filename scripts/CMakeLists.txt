@@ -1,0 +1,14 @@
+# Copyright 2010, Olivier Stasse, JRL, CNRS/AIST
+#
+# This file is part of sot-hrprtc-hrp2
+IF(GRX_PREFIX)
+  #SET(SCRIPT_DIR ${CMAKE_SOURCE_DIR}/scripts)
+  SET(SCRIPT_DIR "")         
+  SET(SCRIPT_FILES ${SCRIPT_DIR}grx/guisot.py 
+    ${SCRIPT_DIR}grx/guiinfosot.py 
+    ${SCRIPT_DIR}grx/sot.py 
+    ${SCRIPT_DIR}grx/sotinfo.py)
+  INSTALL(FILES ${SCRIPT_FILES}
+    DESTINATION ${ROBOT_PATH}/script
+    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_READ WORLD_EXECUTE)
+ENDIF(GRX_PREFIX)
