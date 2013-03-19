@@ -81,10 +81,19 @@ Running the component (with GRX software)
 roscore
 
 2/ If you are doing simulation launch the simulator
-(Grx 3.1 simulator for HRP2)
+(Grx 3.1 simulator for HRP2) and the simulation
 
 3/ launch guisot.py
 
-TODO: See if this working outside GRX test-suite.
+4/ Click on setup rt-system 
+
+5/ rosrun dynamic_graph_bridge run_command
+
+6/ launch the sot-graph you are looking for.
+
+7/ Click on Start SoT
+
+
+TODO: See if this is working outside GRX test-suite.
 
 

@@ -1,6 +1,5 @@
 #!/opt/grx/bin/hrpsyspy
 import os
-import rtm
 import time
 from java.lang import System
 from java.awt import *
@@ -32,7 +31,7 @@ def reconnect():
 def setupRobot():
   if reconnect():
     init()
-    #setupLogger()
+    setupLogger()
 
 def restart():
   waitInputConfirm('!! Caution !! \n Push [OK] to restart rtcd ')

@@ -23,20 +23,16 @@ def init(robotHost=None):
     print "creating components"
     rtcList = createComps(robotHost)
 
-    #print "connecting components"
-    print "LD_LIBRARY_PATH:"
-    print os.environ['LD_LIBRARY_PATH']
-    print "PYTHONPATH:"
-    print os.environ['PYTHONPATH']
+    print "connecting components"
     connectComps()
 
-    #print "activating components"
+    print "activating components"
     activateComps(rtcList)
 
-    #print "initialize bodyinfo"
-    #bodyinfo.init(rtm.rootnc)
+    print "initialize bodyinfo"
+    bodyinfo.init(rtm.rootnc)
 
-    #print "initialized successfully"
+    print "initialized successfully"
 
 def activateComps(rtcList):
     rtm.serializeComponents(rtcList)
@@ -92,6 +88,12 @@ def stOn():
 
 def stOff():
     st.setProperty("isEnabled", "0")
+
+def sotOn():
+    sot.setProperty("is_enabled", "1")
+
+def sotOff():
+    sot.setProperty("is_enabled", "0")
 
 def walk05():
     kpg_svc.setTargetPos(0.449, 0.0, 0.0)
@@ -188,7 +190,9 @@ def setupLogger():
     global log_svc
     log_svc = OpenHRP.DataLoggerServiceHelper.narrow(log.service("service0"))
     log_svc.add("TimedDoubleSeq", "q")
-    log_svc.add("TimedDoubleSeq", "qRef")
+    log_svc.add("TimedDoubleSeq", "qRefst")
+    log_svc.add("TimedDoubleSeq", "qOutsh")
+    log_svc.add("TimedDoubleSeq", "qRefsot")
     log_svc.add("TimedDoubleSeq", "zmpRefSeq")
     log_svc.add("TimedDoubleSeq", "zmpRefKpg")
     log_svc.add("TimedDoubleSeq", "basePos")
@@ -199,13 +203,15 @@ def setupLogger():
     rtm.connectPorts(rh.port("q"), log.port("q"))
     rtm.connectPorts(rh.port("rfsensor"), log.port("forceR"))
     rtm.connectPorts(rh.port("lfsensor"), log.port("forceL"))    
-    rtm.connectPorts(st.port("qRefOut"), log.port("qRef"))
+    rtm.connectPorts(sh.port("qOut"), log.port("qOutsh"))
+    rtm.connectPorts(sot.port("qRef"), log.port("qRefsot"))
+    rtm.connectPorts(st.port("qRefOut"), log.port("qRefst"))
     rtm.connectPorts(seq.port("zmpRef"), log.port("zmpRefSeq"))
     rtm.connectPorts(sot.port("zmpRef"), log.port("zmpRefKpg"))
     rtm.connectPorts(sh.port("basePosOut"), log.port("basePos"))
     rtm.connectPorts(kf.port("rpy"), log.port("rpy"))
 
-def saveLog(fname='sample'):
+def saveLog(fname='sot'):
     if log_svc == None:
       waitInputConfirm("Setup DataLogger RTC first.")
       return
@@ -398,6 +404,15 @@ def calibSensors():
       traceback.print_exception(exceptionType, exceptionValue, exceptionTraceback,limit=2, file=sys.stdout)
     servoOff()
 
+def startSot():
+    servoOn()
+    goHalfSitting()
+    stOn()
+    sotOn()
+    putRobotDown()
+    time.sleep(8) # TODO use sleep funtion which can count simulation time
+    saveLog("/tmp/%s_sot_%s"%(bodyinfo.modelName.lower(), time.strftime('%Y%m%d%H%M')))
+
 def execTestPattern():
     servoOn()
     goHalfSitting()
@@ -485,5 +500,5 @@ if __name__ == '__main__' or __name__ == 'main':
     else:
         robotHost = None
     init(robotHost)
-    #setupLogger()
-    #userTest()
+    setupLogger()
+    userTest()
