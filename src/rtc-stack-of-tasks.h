@@ -13,6 +13,8 @@
 #include <rtm/CorbaPort.h>
 #include <rtm/DataInPort.h>
 #include <rtm/DataOutPort.h>
+#include <rtm/idl/BasicDataTypeSkel.h>
+#include <rtm/idl/ExtendedDataTypesSkel.h>
 
 # include <sot/core/abstract-sot-external-interface.hh>
 
@@ -36,9 +38,9 @@ struct robot_config_t
   /// \brief Name of the controller to load
   std::string libname;
   /// \brief Robot number of DoFs
-  unsigned int nb_dofs;
+  int nb_dofs;
   /// \brief Number of force sensors
-  unsigned int nb_force_sensors;
+  int nb_force_sensors;
   
 };
 
@@ -165,8 +167,8 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
   OutPort<TimedDoubleSeq> m_pRefOut;
   TimedDoubleSeq m_rpyRef;
   OutPort<TimedDoubleSeq> m_rpyRefOut;
-  TimedDoubleSeq m_accRef;
-  OutPort<TimedDoubleSeq> m_accRefOut;
+  TimedAcceleration3D m_accRef;
+  OutPort<TimedAcceleration3D> m_accRefOut;
 
   // </rtc-template>
 

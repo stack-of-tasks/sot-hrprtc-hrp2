@@ -1,6 +1,6 @@
 # Copyright 2010, Olivier Stasse, JRL, CNRS/AIST
 #
-# This file is part of FootStepPlanner-RTC.
+# This file is part of rtc-hrprtc-hrp2
 
 # The main library name
 SET(HRPRTC_HRP2_LIB_NAME "RtcStackOfTasks")
@@ -42,6 +42,6 @@ INSTALL(TARGETS ${LIBRARY_NAME}
 
 IF(GRX_PREFIX)
   INSTALL(TARGETS ${LIBRARY_NAME}
-    DESTINATION ${ROBOT_PATH}/lib )
+    DESTINATION ${GRX_PREFIX}/lib )
 ENDIF(GRX_PREFIX)
 

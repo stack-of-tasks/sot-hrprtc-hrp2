@@ -84,6 +84,9 @@ RtcStackOfTasks::RtcStackOfTasks(RTC::Manager* manager)
     // </rtc-template>
 {
   RESETDEBUG5();
+  m_rpyRef.data.length(3);
+  m_pRef.data.length(3);
+  m_zmpRef.data.length(3);
 }
 
 RtcStackOfTasks::~RtcStackOfTasks()
@@ -95,6 +98,8 @@ void RtcStackOfTasks::readConfig()
   ODEBUG5("The library to be loaded: " << robot_config_.libname) ;
   ODEBUG5("Nb dofs:" << robot_config_.nb_dofs);
   ODEBUG5("Nb force sensors:" << robot_config_.nb_force_sensors);
+  m_qRef.data.length(robot_config_.nb_dofs);  
+
 }
 
 void RtcStackOfTasks::LoadSot()
@@ -191,15 +196,13 @@ RTC::ReturnCode_t RtcStackOfTasks::onInitialize()
   bindParameter("robot_nb_force_sensors",robot_config_.nb_force_sensors, "0");
   bindParameter("is_enabled",started_,"0");
 
-  ODEBUG5("Nb dofs:" << robot_config_.nb_dofs);
-  ODEBUG5("Nb force sensors:" << robot_config_.nb_force_sensors);
   // </rtc-template>
 
   // Initialize angleEncoder_ to zero.
   angleEncoder_.resize(robot_config_.nb_dofs);
-  for(unsigned int i=0;i<robot_config_.nb_dofs;i++)
+  for(int i=0;i<robot_config_.nb_dofs;i++)
     angleEncoder_[i] = 0.0;
-  
+
   return RTC::RTC_OK;
 }
 
@@ -314,7 +317,7 @@ RtcStackOfTasks::fillSensors(std::map<std::string,dgsot::SensorValues> &
   else 
     {
       torques_.resize(robot_config_.nb_dofs);
-      for(unsigned int i=0;i<robot_config_.nb_dofs;i++)
+      for(unsigned int i=0;i<(unsigned int)robot_config_.nb_dofs;i++)
         torques_[i] = 0.0;
     }
   sensorsIn["torques"].setValues(torques_);
@@ -392,16 +395,15 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
   // Update joint values.
   angleControl_ = controlValues["joints"].getValues();
   
-  m_qRef.data.length(robot_config_.nb_dofs);
   for(unsigned int i=0;i<angleControl_.size();i++)
     { 
       m_qRef.data[i] = angleControl_[i]; 
       ODEBUG5("m_qRef["<<i<<"]=" << m_qRef.data[i]);
     }
-  if (angleControl_.size()<robot_config_.nb_dofs)
+  if (angleControl_.size()<(unsigned int)robot_config_.nb_dofs)
     {
       for(unsigned int i=angleControl_.size();
-          i<robot_config_.nb_dofs
+          i<(unsigned int)robot_config_.nb_dofs
             ;i++)
         {
           m_qRef.data[i] = 0.0;
@@ -410,22 +412,21 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
     }
   m_qRef.tm = tm;
   m_qRefOut.write();
- 
-  
   
   // Update torque
   const std::vector<double>& baseff =
     controlValues["baseff"].getValues();
   
+  m_pRef.data[0] = baseff[3]; 
+  m_pRef.data[1] = baseff[7]; 
+  m_pRef.data[2] = baseff[11]; 
+  m_pRef.tm = tm;
+  m_pRefOut.write();
 
-  m_pRef.data.length(3);
-  for(unsigned int i=0;i<3;i++)
-    { m_pRef.data[i] = baseff[i*4+3]; }
-  m_pRefOut.tm = tm;
-  m_pRefOut.write(m_pRef);
-
-  for(unsigned int i=0;i<3;i++)
-    ODEBUG5("m_pRef" << m_pRef.data[i]);  
+  ODEBUG5("m_pRef" 
+          << m_pRef.data[0] << " "
+          << m_pRef.data[1] << " "
+          << m_pRef.data[2] << " " );  
   for(unsigned int i=0;i<3;++i)
     for (int j = 0; j < 3; ++j)
       R[i*3+j] = baseff[i*4+j];
@@ -433,26 +434,28 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
   RpyVector arpyv;
   fromRotationToRpy(R,arpyv);
   
-  m_rpyRef.data.length(3);
   m_rpyRef.data[0] = arpyv.roll;
   m_rpyRef.data[1] = arpyv.pitch;
   m_rpyRef.data[2] = arpyv.yaw;
-  m_rpyRefOut.write(m_rpy);
-  for(unsigned int i=0;i<3;i++)
-    ODEBUG5("m_rpyRef["<< i << "]=" << m_rpyRef.data[i]);  
+  m_rpyRef.tm = tm;
+  m_rpyRefOut.write();
+
+  ODEBUG5("m_rpyRef =" 
+          << m_rpyRef.data[0] << " " 
+          << m_rpyRef.data[1] << " " 
+          << m_rpyRef.data[2] << " " );  
   // Update forces
   const std::vector<double>& zmp (controlValues["zmp"].getValues());
-  m_zmpRef.data.length(zmp.size());
-  for(unsigned int i=0;i<3;i++)
-    {
-      m_zmpRef.data[i] = zmp[i];
-    }
+  m_zmpRef.data[0] = zmp[0];
+  m_zmpRef.data[1] = zmp[1];
+  m_zmpRef.data[2] = zmp[2];
+
   ODEBUG5("m_zmpRef: " << m_zmpRef.data[0] << " "
           << m_zmpRef.data[1] << " "
           << m_zmpRef.data[2] << " ");
 
-  m_zmpRefOut.tm = tm;
-  m_zmpRefOut.write(m_zmpRef);
+  m_zmpRef.tm = tm;
+  m_zmpRefOut.write();
 }
 
 void

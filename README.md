@@ -97,3 +97,16 @@ roscore
 TODO: See if this is working outside GRX test-suite.
 
 
+Introspection tools for the RTC component
+=========================================
+
+rtcat /localhost/sot.rtc 
+will give you the state of the Stack of Task RTC component.
+
+If you want to see the command:
+rtprint /localhost/sot.rtc:qRef
+
+To check the format of the port:
+rtcat -l /localhost/sot.rtc:qRef
+
+
