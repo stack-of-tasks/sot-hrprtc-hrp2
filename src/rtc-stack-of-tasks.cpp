@@ -109,7 +109,7 @@ void RtcStackOfTasks::LoadSot()
   ODEBUG5("LoadSot - Start " << sLD_LIBRARY_PATH);
   char * sPYTHONPATH;
   sPYTHONPATH=getenv("PYTHONPATH");
-  ODEBUG5("PYTHONPATH:" << sPYTHONPATH);
+  ODEBUG5("PYTHONPATH:" << sPYTHONPATH );
   sPYTHONPATH=getenv("PYTHON_PATH");
   ODEBUG5("PYTHON_PATH:" << sPYTHONPATH);
 
@@ -234,7 +234,7 @@ void RtcStackOfTasks::fillAngles(std::map<std::string,dgsot::SensorValues> &
   TimedDoubleSeq * langlePort=&m_angleEncoder;
   if (initPort)
     {
-      ODEBUG5("Read Init Port");
+      ODEBUG("Read Init Port");
       langlePortIn = &m_angleInitIn;
       langlePort = &m_angleInit;
     }
@@ -249,7 +249,9 @@ void RtcStackOfTasks::fillAngles(std::map<std::string,dgsot::SensorValues> &
         {
           angleEncoder_[i] = langlePort->data[i];
           if (initPort)
-            ODEBUG5("qInit:["<<i << "]= " << langlePort->data[i]);
+            {
+              ODEBUG("qInit:["<<i << "]= " << langlePort->data[i]);
+            }
         }
     }
   sensorsIn["joints"].setValues(angleEncoder_);
@@ -398,7 +400,7 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
   for(unsigned int i=0;i<angleControl_.size();i++)
     { 
       m_qRef.data[i] = angleControl_[i]; 
-      ODEBUG5("m_qRef["<<i<<"]=" << m_qRef.data[i]);
+      ODEBUG("m_qRef["<<i<<"]=" << m_qRef.data[i]);
     }
   if (angleControl_.size()<(unsigned int)robot_config_.nb_dofs)
     {
@@ -407,7 +409,7 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
             ;i++)
         {
           m_qRef.data[i] = 0.0;
-          ODEBUG5("m_qRef["<<i<<"]=" << m_qRef.data[i]);
+          ODEBUG("m_qRef["<<i<<"]=" << m_qRef.data[i]);
         }
     }
   m_qRef.tm = tm;
@@ -423,7 +425,7 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
   m_pRef.tm = tm;
   m_pRefOut.write();
 
-  ODEBUG5("m_pRef" 
+  ODEBUG("m_pRef" 
           << m_pRef.data[0] << " "
           << m_pRef.data[1] << " "
           << m_pRef.data[2] << " " );  
@@ -440,7 +442,7 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
   m_rpyRef.tm = tm;
   m_rpyRefOut.write();
 
-  ODEBUG5("m_rpyRef =" 
+  ODEBUG("m_rpyRef =" 
           << m_rpyRef.data[0] << " " 
           << m_rpyRef.data[1] << " " 
           << m_rpyRef.data[2] << " " );  
@@ -450,7 +452,7 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
   m_zmpRef.data[1] = zmp[1];
   m_zmpRef.data[2] = zmp[2];
 
-  ODEBUG5("m_zmpRef: " << m_zmpRef.data[0] << " "
+  ODEBUG("m_zmpRef: " << m_zmpRef.data[0] << " "
           << m_zmpRef.data[1] << " "
           << m_zmpRef.data[2] << " ");
 
@@ -508,8 +510,8 @@ RTC::ReturnCode_t RtcStackOfTasks::onDeactivated(RTC::UniqueId ec_id)
 
 RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId /* ec_id */)
 {
-  ODEBUG5("onExecute - start");
-  ODEBUG5("Active configuration set:");
+  ODEBUG("onExecute - start");
+  ODEBUG("Active configuration set:");
   if (!initialize_library_)
     {
       readConfig();
@@ -521,11 +523,11 @@ RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId /* ec_id */)
 
   if (!started_)
     {
-      ODEBUG5("started_ property not set.");
+      ODEBUG("started_ property not set.");
       return RTC::RTC_OK;      
     }
 
-  ODEBUG5(m_configsets.getActiveId());
+  ODEBUG(m_configsets.getActiveId());
   // 
   // Log control loop start time.
   captureTime (t0_);
@@ -536,15 +538,16 @@ RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId /* ec_id */)
       m_sotController->setupSetSensors(sensorsIn_);
       m_sotController->getControl(controlValues_);
     } 
-  catch (std::exception &e) {  ODEBUG5("Exception: e.what()");throw e; }
-  ODEBUG5("Before reading control");
+  catch (std::exception &e) 
+    {  ODEBUG5("Exception on Execute: e.what()");throw e; }
+  ODEBUG("Before reading control");
   readControl(controlValues_);
-  ODEBUG5("After reading control");
+  ODEBUG("After reading control");
 
   // Log control loop end time and compute time spent.
   captureTime (t1_);
   logTime (t0_, t1_);
-  ODEBUG5("onExecute - end");
+  ODEBUG("onExecute - end");
   return RTC::RTC_OK;
 }
 /*
