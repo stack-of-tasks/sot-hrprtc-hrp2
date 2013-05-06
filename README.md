@@ -1,112 +1,126 @@
-RTC component to encapsulte the SoT 
-===================================
+RTC component to encapsulate the SoT on HRP2
+===========================================
 
-This RTC component will load a dynamic library containing
-all the control algorithms to generate motion for a humanoid robot.
+This RTC component will load a dynamic library containing all the control
+algorithms to generate motion for a humanoid robot.
+
+Prerequisite
+============
+We assume that
+* your machine is running ubuntu-10.04,
+* ros-electric-desktop-full is installed in /opt/ros/electric (via apt-get),
+* ros-electric-ros-realtime is installed in /opt/ros/electric,
+* ros-electric-pr2-mechanism is installed in /opt/ros/electric,
+* environment variable DEVEL_DIR should contain an existing directory.
+
+The following packages should be installed in $DEVEL_DIR/install
+* jrl-mathtools,
+* jrl-mal,
+* abstract-robot-dynamics,
+* jrl-dynamics,
+* jrl-walkgen,
+* dynamic-graph,
+* dynamic-graph-python,
+* sot-core,
+* sot-dynamics
+* sot-patterngenerator,
+* sot-hrp2.
+
+The following ROS stacks should be installed in $DEVEL_DIR/stacks
+* hrp2
+* redundant_manipulator_control
 
 To install
-===================================
+==========
 
-mkdir _build-RELEASE
+        mkdir _build-RELEASE
+        cd _build-RELEASE
+        cmake -DCMAKE_INSTALL_PREFIX=$DEVEL_DIR/install -DCMAKE_BUILD_TYPE=RELEASE -DROBOT=$ROBOT ..
+        make
+        sudo chmod 777 /opt/grx/lib
+        make install
 
-cd _build-RELEASE
-
-cmake -DCMAKE_BUILD_TYPE=RELEASE ..
-
-make
-
-make install
+where $ROBOT is HRP2LAAS or HRP2JRL.
 
 Setting the environment variables for the component alone
 =========================================================
 
+1.  Make sure that your robot library can be loaded by the component.
+    For that, your LD_LIBRARY_PATH should include $DEVEL_DIR/install/lib/plugin 
+    and $DEVEL_DIR/install/lib.
+    Check that libsot-hrp2-14-controller.so (or libsot-hrp2-10-controller.so) is
+    in this latter directory.
 
-1/ Make sure that your robot library can be load by the component.
-This means that your LD_LIBRARY_PATH should include the
-library where the robot library is stored.
+2.  Make sure that $DEVEL_DIR/install/lib/python2.6/site-packages is in your
+    PYTHONPATH to access SoT scripts.
 
-For instance, the HRP-2 robot controller library is located at:
-/opt/openrobots/lib/libsot-hrp2-controller.so
-
-Then the following line can be added in your shell starting file:
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/openrobots/lib
-
-2/ You also should make sure that your robot python scripts
-for the Stack of Tasks are available in the PYTHONPATH.
-
-For instance the HRP-2 python scripts are located at:
-/opt/openrobots/lib/python2.6/site-packages/dynamic_graph/
-
-Then the following line can be added in your shell starting file:
-PYTHON_PATH=$PYTHON_PATH:/opt/openrobots/lib/python2.6/site-packages/
-
-Setting the environment variables for the component inside a hrpsys graph
+Setting the environment variables for and the component inside a hrpsys graph
 =========================================================================
 
-1/ Environment variables
-We assume that you have a config file such as the one
-given in the subdirectory:
-scripts/grx/config.sh
+At the end of file /opt/grx/$ROBOT/bin/config.sh, you should source the
+following config.sh
 
-It setup, in addition to the above variables, the ROS environment.
+        $DEVEL_DIR/config.sh
 
-This file has to be included in the config.sh of your
-robot, typically :
-/opt/grx/YOUR_ROBOT/bin/config.sh
+Be aware that the RTC component resets environment variables. Therefore, the
+above DEVEL_DIR should be expanded by hand.
 
-2/ Use guisot.py to launch the graph of RTC-component in
-scripts/grx
+The above file should contain the following lines
 
+        export ROS_ROOT=/opt/ros/electric/ros
+        export PATH=$ROS_ROOT/bin:$PATH
+        export PYTHONPATH=$PYTHONPATH:$ROS_ROOT/core/roslib/src:/opt/grx/HRP2LAAS/script
+        export ROS_MASTER_URI=http://localhost:11311
 
 Robot settings for the RTC-component
 ====================================
 
-For the controller to load the proper library,
-you should modify the sotinfo.py files and set:
-1/ The name of the library in sot.libname
-2/ The number of the robot DOFs
-3/ The number of force sensors.
+For the controller to load the proper library, you should modify the sotinfo.py
+files and set:
+1.  The name of the library in sot.libname
+2.  The number of the robot DOFs
+3.  The number of force sensors.
 
 Here is an example for the HRP-2 robot.
 
-sotConfig=[["sot.libname","libsot-hrp2-14-controller.so"],
-           ["robot.nbdofs","36"],
-           ["robot.nb_force_sensors","4"]]
+        sotConfig=[["sot.libname","libsot-hrp2-14-controller.so"],
+                   ["robot.nbdofs","36"],
+                   ["robot.nb_force_sensors","4"]]
 
 
 Running the component (with GRX software)
 =========================================
 
-1/ Make sure than ROS is running in a terminal by launching:
-roscore
+1.  Make sure than ROS is running in a terminal by launching:
 
-2/ If you are doing simulation launch the simulator
-(Grx 3.1 simulator for HRP2) and the simulation
+        roscore
 
-3/ launch guisot.py
+2.  if you are doing simulation launch the simulator
+(Grx 3.1 simulator for HRP2) and the simulation,
 
-4/ Click on setup rt-system 
+3.  launch /opt/grx/$ROBOT/script/guisot.py,
 
-5/ rosrun dynamic_graph_bridge run_command
+4.  Click on setup rt-system,
 
-6/ launch the sot-graph you are looking for.
+5.  rosrun dynamic_graph_bridge run_command
 
-7/ Click on Start SoT
+6.  initialize your control graph
 
-
-TODO: See if this is working outside GRX test-suite.
+7.  click on Start SoT
 
 
 Introspection tools for the RTC component
 =========================================
 
-rtcat /localhost/sot.rtc 
+        rtcat /localhost/sot.rtc 
 will give you the state of the Stack of Task RTC component.
 
 If you want to see the command:
-rtprint /localhost/sot.rtc:qRef
+
+        rtprint /localhost/sot.rtc:qRef
 
 To check the format of the port:
-rtcat -l /localhost/sot.rtc:qRef
+
+        rtcat -l /localhost/sot.rtc:qRef
 
 
