@@ -1,0 +1,6 @@
+import os
+import sys
+
+sotConfig=[["sot_libname","libsot-hrp2-10-controller.so"],
+           ["robot_nb_dofs","38"],
+           ["robot_nb_force_sensors","4"]]

@@ -72,22 +72,6 @@ The above file should contain the following lines
         export PYTHONPATH=$PYTHONPATH:$ROS_ROOT/core/roslib/src:/opt/grx/HRP2LAAS/script
         export ROS_MASTER_URI=http://localhost:11311
 
-Robot settings for the RTC-component
-====================================
-
-For the controller to load the proper library, you should modify the sotinfo.py
-files and set:
-1.  The name of the library in sot.libname
-2.  The number of the robot DOFs
-3.  The number of force sensors.
-
-Here is an example for the HRP-2 robot.
-
-        sotConfig=[["sot.libname","libsot-hrp2-14-controller.so"],
-                   ["robot.nbdofs","36"],
-                   ["robot.nb_force_sensors","4"]]
-
-
 Running the component (with GRX software)
 =========================================
 
