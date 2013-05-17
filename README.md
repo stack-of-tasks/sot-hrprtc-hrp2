@@ -20,6 +20,10 @@ The following packages should be installed in $DEVEL_DIR/install
 * abstract-robot-dynamics,
 * jrl-dynamics,
 * jrl-walkgen,
+* hrp2-14,
+* hrp2-10,
+* hrp2-dynamics,
+* hrp2-10-optimized,
 * dynamic-graph,
 * dynamic-graph-python,
 * sot-core,
@@ -96,6 +100,10 @@ Running the component (with GRX software)
 
 Introspection tools for the RTC component
 =========================================
+
+You need to install
+* rtctree: git@github.com:gbiggs/rtctree.git,
+* rtshell: git@github.com:gbiggs/rtshell.git
 
         rtcat /localhost/sot.rtc 
 will give you the state of the Stack of Task RTC component.
