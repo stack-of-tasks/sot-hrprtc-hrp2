@@ -12,6 +12,7 @@ We assume that
 * ros-electric-ros-realtime is installed in /opt/ros/electric,
 * ros-electric-pr2-mechanism is installed in /opt/ros/electric,
 * environment variable DEVEL_DIR should contain an existing directory.
+* environment variable PKG_CONFIG_PATH should contain /opt/grx/lib/pkgconfig
 
 The following packages should be installed in $DEVEL_DIR/install
 * jrl-mathtools,
