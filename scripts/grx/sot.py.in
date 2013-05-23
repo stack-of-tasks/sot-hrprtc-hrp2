@@ -13,6 +13,12 @@ import sotinfo
 import OpenHRP
 from OpenHRP.RobotHardwareServicePackage import SwitchStatus
 
+st = None
+if "@STABILIZER@" == "ON":
+    useStabilizerComp = True
+else:
+    useStabilizerComp = False
+
 def init(robotHost=None):
     if robotHost != None:
       print 'robot host = '+robotHost
@@ -125,11 +131,13 @@ def createComps(hostname=socket.gethostname()):
     sh  = initRTC("StateHolder", "StateHolder0")
     sh_svc = OpenHRP.StateHolderServiceHelper.narrow(sh.service("service0"))
 
-    kf  = initRTC("KalmanFilter", "kf")
+    if useStabilizerComp:
+        kf  = initRTC("KalmanFilter", "kf")
     kpg = initRTC("WalkGenerator", "kpg")
     kpg_svc = OpenHRP.WalkGeneratorServiceHelper.narrow(kpg.service("service0"))
-    st  = initRTC("Stabilizer", "st")
-    st.setConfiguration(bodyinfo.hstConfig)
+    if useStabilizerComp:
+        st  = initRTC("Stabilizer", "st")
+        st.setConfiguration(bodyinfo.hstConfig)
 
     log = initRTC("DataLogger", "log")
     
@@ -137,51 +145,54 @@ def createComps(hostname=socket.gethostname()):
     sot = initRTC("RtcStackOfTasks","sot")
     print "Set configuration of SoT"
     sot.setConfiguration(sotinfo.sotConfig)
-    return [rh, seq, kf, kpg, sh, st, log, sot]
+    if useStabilizerComp:
+        return [rh, seq, kf, kpg, sh, st, log, sot]
+    else:
+        return [rh, seq, kpg, sh, log, sot]
     
 
 def connectComps():
-    rtm.connectPorts(rh.port("q"), [sh.port("currentQIn"),
-                                st.port("q")])
+    if useStabilizerComp:
+        rtm.connectPorts(rh.port("q"), [sh.port("currentQIn"),
+                                        st.port("q")])
+    else:
+        rtm.connectPorts(rh.port("q"), sh.port("currentQIn"))
     if servo != None:
-        rtm.connectPorts(rh.port("rfsensor"), st.port("forceR"))
-        rtm.connectPorts(rh.port("lfsensor"), st.port("forceL"))
-        rtm.connectPorts(rh.port("gyrometer"), [st.port("rate"),
-                                            kf.port("rate")])
-        rtm.connectPorts(rh.port("gsensor"), [kf.port("acc"),
-                                          st.port("acc")])
-    #
-    rtm.connectPorts(kf.port("rpy"), st.port("rpy"))
+        if useStabilizerComp:
+            rtm.connectPorts(rh.port("rfsensor"), st.port("forceR"))
+            rtm.connectPorts(rh.port("lfsensor"), st.port("forceL"))
+            rtm.connectPorts(rh.port("gyrometer"), [st.port("rate"),
+                                                    kf.port("rate")])
+            rtm.connectPorts(rh.port("gsensor"), [kf.port("acc"),
+                                                  st.port("acc")])
     #
     rtm.connectPorts(seq.port("qRef"),    sh.port("qIn"))
     rtm.connectPorts(seq.port("basePos"), sh.port("basePosIn"))
     rtm.connectPorts(seq.port("baseRpy"), sh.port("baseRpyIn"))
-    rtm.connectPorts(seq.port("accRef"),  kf.port("accRef"))
-    rtm.connectPorts(seq.port("zmpRef"),  st.port("zmpRef"))
-    #
-    #rtm.connectPorts(kpg.port("qRef"),   sh.port("qIn"))
-    #rtm.connectPorts(kpg.port("pRef"),   sh.port("basePosIn"))
-    #rtm.connectPorts(kpg.port("rpyRef"), sh.port("baseRpyIn"))
-    #rtm.connectPorts(kpg.port("accRef"), kf.port("accRef"))
-    #rtm.connectPorts(kpg.port("zmpRef"), st.port("zmpRef"))
+    if useStabilizerComp:
+        rtm.connectPorts(seq.port("accRef"),  kf.port("accRef"))
+        rtm.connectPorts(seq.port("zmpRef"),  st.port("zmpRef"))
+        rtm.connectPorts(sot.port("accRef"),  kf.port("accRef"))
+        rtm.connectPorts(sot.port("zmpRef"),  st.port("zmpRef"))
+        rtm.connectPorts(sh.port("qOut"), st.port("qRefIn"))
+        rtm.connectPorts(sh.port("baseRpyOut"), st.port("rpyRef"))
 
     rtm.connectPorts(sot.port("qRef"),    sh.port("qIn"))
     rtm.connectPorts(sot.port("pRef"),    sh.port("basePosIn"))
     rtm.connectPorts(sot.port("rpyRef"),  sh.port("baseRpyIn"))
-    rtm.connectPorts(sot.port("accRef"),  kf.port("accRef"))
-    rtm.connectPorts(sot.port("zmpRef"),  st.port("zmpRef"))
     #
-    rtm.connectPorts(sh.port("qOut"),       [st.port("qRefIn"),
-                                         seq.port("qInit"),
-                                         sot.port("qInit")])
+    rtm.connectPorts(sh.port("qOut"), [seq.port("qInit"),
+                                       sot.port("qInit")])
     rtm.connectPorts(sh.port("basePosOut"), [seq.port("basePosInit"),
                                          sot.port("pInit")])
-    rtm.connectPorts(sh.port("baseRpyOut"), [st.port("rpyRef"),
-                                         seq.port("baseRpyInit"),
-                                         sot.port("rpyInit")])
+    rtm.connectPorts(sh.port("baseRpyOut"), [seq.port("baseRpyInit"),
+                                             sot.port("rpyInit")])
     #
     if servo: # simulation_mode with dynamics or real robot mode
-        rtm.connectPorts(st.port("qRefOut"), servo.port("qRef"))
+        if useStabilizerComp:
+            rtm.connectPorts(st.port("qRefOut"), servo.port("qRef"))
+        else:
+            rtm.connectPorts(sh.port("qOut"), servo.port("qRef"))
     else:     # simulation mode without dynamics
         rtm.connectPorts(sh.port("qOut"), rh.port("qIn"))
     #
@@ -205,11 +216,12 @@ def setupLogger():
     rtm.connectPorts(rh.port("lfsensor"), log.port("forceL"))    
     rtm.connectPorts(sh.port("qOut"), log.port("qOutsh"))
     rtm.connectPorts(sot.port("qRef"), log.port("qRefsot"))
-    rtm.connectPorts(st.port("qRefOut"), log.port("qRefst"))
+    if useStabilizerComp:
+        rtm.connectPorts(st.port("qRefOut"), log.port("qRefst"))
+        rtm.connectPorts(kf.port("rpy"), log.port("rpy"))
     rtm.connectPorts(seq.port("zmpRef"), log.port("zmpRefSeq"))
     rtm.connectPorts(sot.port("zmpRef"), log.port("zmpRefKpg"))
     rtm.connectPorts(sh.port("basePosOut"), log.port("basePos"))
-    rtm.connectPorts(kf.port("rpy"), log.port("rpy"))
 
 def saveLog(fname='sot'):
     if log_svc == None:
@@ -407,7 +419,8 @@ def calibSensors():
 def startSot():
     servoOn()
     goHalfSitting()
-    stOn()
+    if useStabilizerComp:
+        stOn()
     sotOn()
     putRobotDown()
     time.sleep(8) # TODO use sleep funtion which can count simulation time
@@ -416,7 +429,8 @@ def startSot():
 def execTestPattern():
     servoOn()
     goHalfSitting()
-    stOn()
+    if useStabilizerComp:
+        stOn()
     putRobotDown()
     try:
       waitInputConfirm(
@@ -438,7 +452,8 @@ def execTestPattern():
 def execTestPattern2():
     servoOn()
     goHalfSitting()
-    stOn()
+    if useStabilizerComp:
+        stOn()
     putRobotDown()
     try:
       waitInputConfirm(
@@ -457,7 +472,8 @@ def execTestPattern2():
 
 def userTest():
     goHalfSitting()
-    stOn()
+    if useStabilizerComp:
+        stOn()
     putRobotDown()
     try:
       waitInputConfirm(

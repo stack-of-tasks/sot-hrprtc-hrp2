@@ -7,9 +7,10 @@ IF(GRX_PREFIX)
   ELSE ()
     CONFIGURE_FILE (grx/sotinfo-10.py.in grx/sotinfo.py)
   ENDIF ()
+  CONFIG_FILES (grx/sot.py)
   SET(SCRIPT_FILES ${CMAKE_CURRENT_SOURCE_DIR}/grx/guisot.py
     ${CMAKE_CURRENT_SOURCE_DIR}/grx/guiinfosot.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/grx/sot.py
+    ${CMAKE_CURRENT_BINARY_DIR}/grx/sot.py
     ${CMAKE_CURRENT_BINARY_DIR}/grx/sotinfo.py)
   INSTALL(FILES ${SCRIPT_FILES}
     DESTINATION ${ROBOT_PATH}/script

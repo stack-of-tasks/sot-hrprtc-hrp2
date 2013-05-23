@@ -50,6 +50,7 @@ ELSE(!GRX_PREFIX)
   ENDIF()
 ENDIF(!GRX_PREFIX)
 
+SET(STABILIZER ON CACHE BOOL "Whether stabilizer RTcomponent is used or not.")
 
 ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(components)
