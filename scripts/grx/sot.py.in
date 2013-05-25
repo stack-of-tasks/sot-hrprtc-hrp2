@@ -165,6 +165,10 @@ def connectComps():
                                                     kf.port("rate")])
             rtm.connectPorts(rh.port("gsensor"), [kf.port("acc"),
                                                   st.port("acc")])
+        rtm.connectPorts(rh.port("rfsensor"), sot.port ("forcesRF"))
+        rtm.connectPorts(rh.port("lfsensor"), sot.port ("forcesLF"))
+        rtm.connectPorts(rh.port("rhsensor"), sot.port ("forcesRH"))
+        rtm.connectPorts(rh.port("lhsensor"), sot.port ("forcesLH"))
     #
     rtm.connectPorts(seq.port("qRef"),    sh.port("qIn"))
     rtm.connectPorts(seq.port("basePos"), sh.port("basePosIn"))
