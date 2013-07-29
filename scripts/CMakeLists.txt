@@ -4,10 +4,15 @@
 IF(GRX_PREFIX)
   IF (${ROBOT} STREQUAL HRP2LAAS)
     CONFIGURE_FILE (grx/sotinfo-14.py.in grx/sotinfo.py)
-  ELSE ()
+    CONFIGURE_FILE (grx/sot-hrp2.py.in ${CMAKE_CURRENT_BINARY_DIR}/grx/sot.py)
+  ELSEIF (${ROBOT} STREQUAL HRP2JRL)
     CONFIGURE_FILE (grx/sotinfo-10.py.in grx/sotinfo.py)
+    CONFIGURE_FILE (grx/sot-hrp2.py.in ${CMAKE_CURRENT_BINARY_DIR}/grx/sot.py)
+  ELSEIF (${ROBOT} STREQUAL HRP4LIRMM)
+    CONFIGURE_FILE (grx/sotinfo-hrp4.py.in grx/sotinfo.py)
+    CONFIGURE_FILE (grx/sot-hrp4.py.in ${CMAKE_CURRENT_BINARY_DIR}/grx/sot.py)
   ENDIF ()
-  CONFIG_FILES (grx/sot.py)
+
   SET(SCRIPT_FILES ${CMAKE_CURRENT_SOURCE_DIR}/grx/guisot.py
     ${CMAKE_CURRENT_SOURCE_DIR}/grx/guiinfosot.py
     ${CMAKE_CURRENT_BINARY_DIR}/grx/sot.py
