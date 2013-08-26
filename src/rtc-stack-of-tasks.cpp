@@ -416,6 +416,8 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
   m_qRefOut.write();
   
   // Update torque
+  if(controlValues.find("baseff") != controlValues.end())
+  {
   const std::vector<double>& baseff =
     controlValues["baseff"].getValues();
   
@@ -446,7 +448,11 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
           << m_rpyRef.data[0] << " " 
           << m_rpyRef.data[1] << " " 
           << m_rpyRef.data[2] << " " );  
+  }
+
   // Update forces
+  if(controlValues.find("zmp") != controlValues.end())
+  {
   const std::vector<double>& zmp (controlValues["zmp"].getValues());
   m_zmpRef.data[0] = zmp[0];
   m_zmpRef.data[1] = zmp[1];
@@ -458,6 +464,7 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
 
   m_zmpRef.tm = tm;
   m_zmpRefOut.write();
+  }
 }
 
 void
