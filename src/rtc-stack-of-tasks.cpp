@@ -544,7 +544,7 @@ RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId /* ec_id */)
       m_sotController->getControl(controlValues_);
     } 
   catch (std::exception &e) 
-    {  ODEBUG5("Exception on Execute: e.what()");throw e; }
+    {  ODEBUG5("Exception on Execute: " << e.what());throw e; }
   ODEBUG("Before reading control");
   readControl(controlValues_);
   ODEBUG("After reading control");
