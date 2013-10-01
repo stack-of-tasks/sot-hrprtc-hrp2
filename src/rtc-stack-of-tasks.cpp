@@ -128,7 +128,7 @@ void RtcStackOfTasks::LoadSot()
   createSotExternalInterface_t * createHRP2Controller =
     (createSotExternalInterface_t *) dlsym(SotHRP2ControllerLibrary, 
                                            "createSotExternalInterface");
-  ODEBUG5("createHRP2Controller call "<< std::hex 
+  ODEBUG5("createHRPController call "<< std::hex
           << std::setbase(10));
   const char* dlsym_error = dlerror();
   if (dlsym_error) {
