@@ -350,7 +350,7 @@ RtcStackOfTasks::fillSensors(std::map<std::string,dgsot::SensorValues> &
   sensorsIn["accelerometer_0"].setName("accelerometer_0");
   if (m_accelerometer_0In.isNew())
     {
-      
+      m_accelerometer_0In.read();
       accelerometer_.resize(m_accelerometer_0.data.length());
       for (unsigned int j = 0; j < m_accelerometer_0.data.length(); ++j)
         accelerometer_[j] = m_accelerometer_0.data[j];
@@ -367,7 +367,7 @@ RtcStackOfTasks::fillSensors(std::map<std::string,dgsot::SensorValues> &
   sensorsIn["gyrometer_0"].setName("gyrometer_0");
   if (m_gyrometer_0In.isNew())
     {
-      
+      m_gyrometer_0In.read();
       gyrometer_.resize(m_gyrometer_0.data.length());
       for (unsigned int j = 0; j < m_gyrometer_0.data.length(); ++j)
         gyrometer_[j] = m_gyrometer_0.data[j];
