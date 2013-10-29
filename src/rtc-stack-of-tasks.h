@@ -270,7 +270,7 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
 extern "C"
 {
   DLL_EXPORT void RtcStackOfTasksInit(RTC::Manager* manager);
-};
+}
 
 #endif // RTC_STACK_OF_TASKS_H
 

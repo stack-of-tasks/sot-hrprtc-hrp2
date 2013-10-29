@@ -1,0 +1,15 @@
+corba.nameservers: localhost
+#naming.formats: %h.host_cxt/%n.rtc
+naming.formats: %n.rtc
+logger.enable: NO
+exec_cxt.periodic.type: PeriodicExecutionContext
+exec_cxt.periodic.rate: 1000
+
+sot.libname: libsot-hrp4-controller.so
+robot.nbdofs: 34
+robot.nb_force_sensors: 2
+## If you want to try to run Composite component, uncomment the following lines.
+# manager.modules.load_path: ./.libs/
+# manager.modules.preload: Controller.so, Motor.so, Sensor.so
+# manager.components.precreate: Controller, Motor, Sensor, PeriodicECSharedComposite
+# composite.PeriodicECShared.PeriodicECSharedComposite0.config_file: composite.conf

@@ -128,7 +128,7 @@ void RtcStackOfTasks::LoadSot()
   createSotExternalInterface_t * createHRP2Controller =
     (createSotExternalInterface_t *) dlsym(SotHRP2ControllerLibrary, 
                                            "createSotExternalInterface");
-  ODEBUG5("createHRP2Controller call "<< std::hex 
+  ODEBUG5("createHRPController call "<< std::hex
           << std::setbase(10));
   const char* dlsym_error = dlerror();
   if (dlsym_error) {
@@ -350,7 +350,7 @@ RtcStackOfTasks::fillSensors(std::map<std::string,dgsot::SensorValues> &
   sensorsIn["accelerometer_0"].setName("accelerometer_0");
   if (m_accelerometer_0In.isNew())
     {
-      
+      m_accelerometer_0In.read();
       accelerometer_.resize(m_accelerometer_0.data.length());
       for (unsigned int j = 0; j < m_accelerometer_0.data.length(); ++j)
         accelerometer_[j] = m_accelerometer_0.data[j];
@@ -367,7 +367,7 @@ RtcStackOfTasks::fillSensors(std::map<std::string,dgsot::SensorValues> &
   sensorsIn["gyrometer_0"].setName("gyrometer_0");
   if (m_gyrometer_0In.isNew())
     {
-      
+      m_gyrometer_0In.read();
       gyrometer_.resize(m_gyrometer_0.data.length());
       for (unsigned int j = 0; j < m_gyrometer_0.data.length(); ++j)
         gyrometer_[j] = m_gyrometer_0.data[j];
@@ -544,7 +544,7 @@ RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId /* ec_id */)
       m_sotController->getControl(controlValues_);
     } 
   catch (std::exception &e) 
-    {  ODEBUG5("Exception on Execute: e.what()");throw e; }
+    {  ODEBUG5("Exception on Execute: " << e.what());throw e; }
   ODEBUG("Before reading control");
   readControl(controlValues_);
   ODEBUG("After reading control");

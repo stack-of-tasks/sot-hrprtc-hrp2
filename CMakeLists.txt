@@ -8,9 +8,10 @@ INCLUDE(cmake/base.cmake)
 INCLUDE(cmake/cpack.cmake)
 INCLUDE(cmake/idlrtc.cmake)
 INCLUDE(cmake/boost.cmake)
+INCLUDE(cmake/openhrp.cmake)
 
 SET(PROJECT_NAME hrprtc-hrp2-rtc)
-SET(PROJECT_DESCRIPTION "RTC HRP-2 Real-Time Component.")
+SET(PROJECT_DESCRIPTION "RTC HRP Real-Time Component.")
 SET(PROJECT_URL "https://github.com/stack-of-tasks/sot-hrprtc-hrp2.git")
 
 # Disable -Werror on Unix for now.
@@ -25,30 +26,8 @@ ADD_REQUIRED_DEPENDENCY("omniORB4 >= 4.1.1")
 ADD_REQUIRED_DEPENDENCY("openrtm-aist")
 ADD_REQUIRED_DEPENDENCY("sot-core")
 
-# Define additional options.
-FIND_PATH(GRX_PREFIX
-  # Make sure bin/DynamicsSimulator exists (to validate that it is
-  # _really_ the prefix of an OpenHRP setup).
-  include/rtm/idl/SDOPackage.hh
-  HINTS /opt/grx/
-  DOC "GRX software prefix (i.e. '/opt/grxX.Y')"
-  NO_DEFAULT_PATH)
-
-IF(!GRX_PREFIX)
-  MESSAGE(ERROR "Dit not find GRX_PREFIX")
-ELSE(!GRX_PREFIX)
-  SET(ROBOT "" CACHE STRING "GRX robot name (HRP2JRL or HRP2LAAS)")
-  SET(ROBOT_PATH "${GRX_PREFIX}/${ROBOT}")
-  IF(ROBOT STREQUAL "")
-    MESSAGE(FATAL_ERROR
-      "The ROBOT mandatory configuration variable is not set.")
-  ENDIF() 
-  IF(NOT IS_DIRECTORY ${ROBOT_PATH})
-    MESSAGE(FATAL_ERROR
-      "The directory '${ROBOT_PATH}' does not exist."
-      "Please check the ROBOT configuration variable.")
-  ENDIF()
-ENDIF(!GRX_PREFIX)
+SEARCH_GRX()
+SEARCH_GRX_ROBOTS("HRP2JRL;HRP2LAAS;HRP4LIRMM")
 
 SET(STABILIZER ON CACHE BOOL "Whether stabilizer RTcomponent is used or not.")
 
