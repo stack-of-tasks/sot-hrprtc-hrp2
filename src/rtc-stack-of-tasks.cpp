@@ -80,7 +80,8 @@ RtcStackOfTasks::RtcStackOfTasks(RTC::Manager* manager)
     m_rpyRefOut("rpyRef", m_rpyRef),
     m_accRefOut("accRef", m_accRef),
     manager_(manager),
-    initialize_library_(false)
+    initialize_library_(false),
+    startupThread_()
     // </rtc-template>
 {
   RESETDEBUG5();
@@ -99,7 +100,6 @@ void RtcStackOfTasks::readConfig()
   ODEBUG5("Nb dofs:" << robot_config_.nb_dofs);
   ODEBUG5("Nb force sensors:" << robot_config_.nb_force_sensors);
   m_qRef.data.length(robot_config_.nb_dofs);  
-
 }
 
 void RtcStackOfTasks::LoadSot()
@@ -513,18 +513,32 @@ RTC::ReturnCode_t RtcStackOfTasks::onDeactivated(RTC::UniqueId ec_id)
 }
 */
 
+void RtcStackOfTasks::loadAndStart()
+{
+  readConfig();
+  LoadSot();
+  if (m_angleInitIn.isNew())
+    fillAngles(sensorsIn_,true);
+  initialize_library_ = true;
+}
+
+
 RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId /* ec_id */)
 {
   ODEBUG("onExecute - start");
   ODEBUG("Active configuration set:");
-  if (!initialize_library_)
-    {
-      readConfig();
-      LoadSot();
-      if (m_angleInitIn.isNew())
-        fillAngles(sensorsIn_,true);
-      initialize_library_ = true;
-    }
+
+  // start the initialization thread
+  if (initialize_library_ == false && !startupThread_)
+  {
+    startupThread_.reset(new boost::thread(&RtcStackOfTasks::loadAndStart, this));
+  }
+  // destroy the initialization thread when done
+  else if (initialize_library_ == true  && startupThread_)
+  {
+    startupThread_->join();
+    startupThread_.reset();
+  }
 
   if (!started_)
     {

@@ -18,6 +18,8 @@
 
 # include <sot/core/abstract-sot-external-interface.hh>
 
+#include <boost/thread.hpp>
+
 // Service implementation headers
 // <rtc-template block="service_impl_h">
 
@@ -225,6 +227,9 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
   /// \brief Read config variables
   void readConfig();
 
+  /// \brief Load the parameter file and the sot library
+  void loadAndStart();
+
   /// \brief the sot-hrp2 controller
   dgsot::AbstractSotExternalInterface * m_sotController;
 
@@ -264,6 +269,10 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
   RTC::Manager *manager_;
 
   bool initialize_library_;
+
+  /// \brief thread used for the loading of the sot.
+  /// This process cannot be realized in the control loop since it can break it
+  boost::shared_ptr<boost::thread> startupThread_;
 };
 
 
