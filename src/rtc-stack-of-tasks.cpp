@@ -79,6 +79,7 @@ RtcStackOfTasks::RtcStackOfTasks(RTC::Manager* manager)
     m_pRefOut("pRef", m_pRef),
     m_rpyRefOut("rpyRef", m_rpyRef),
     m_accRefOut("accRef", m_accRef),
+    timeIndex_(0),
     manager_(manager),
     initialize_library_(false),
     startupThread_()
@@ -92,6 +93,23 @@ RtcStackOfTasks::RtcStackOfTasks(RTC::Manager* manager)
 
 RtcStackOfTasks::~RtcStackOfTasks()
 {
+  saveLog();
+}
+
+void RtcStackOfTasks::saveLog() const
+{
+  std::string filename ("/tmp/rtc-log-time.txt");
+  std::ofstream logTime (filename.c_str());
+  if(logTime.is_open())
+  {
+    for(unsigned i=0;i<std::min(timeIndex_, timeArray_.size()); ++i)
+      logTime << i << "   " << "   " << timeArray_[i] << std::endl;
+    logTime.close();
+  }
+  else
+  {
+    ODEBUG5("Unable to open '" << filename <<"' to save the log'");
+  }
 }
 
 void RtcStackOfTasks::readConfig()
@@ -475,10 +493,10 @@ void
 RtcStackOfTasks::logTime (const timeval& t0, const timeval& t1)
 {
   double dt =
-    (t1.tv_sec - t0.tv_sec) * 1000.
-    + (t1.tv_usec - t0.tv_usec + 0.) / 1000.;
-  
-  if (timeIndex_ < TIME_ARRAY_SIZE)
+    (t1.tv_sec - t0.tv_sec)
+    + (t1.tv_usec - t0.tv_usec + 0.) / 1e6;
+
+  if (timeIndex_ < timeArray_.size())
     timeArray_[timeIndex_++] = dt;
 }
 

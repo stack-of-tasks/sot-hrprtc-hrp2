@@ -19,6 +19,7 @@
 # include <sot/core/abstract-sot-external-interface.hh>
 
 #include <boost/thread.hpp>
+#include <boost/array.hpp>
 
 // Service implementation headers
 // <rtc-template block="service_impl_h">
@@ -230,6 +231,12 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
   /// \brief Load the parameter file and the sot library
   void loadAndStart();
 
+  /// \brief Save all the log gathered in files.
+  /// Note: This method is called in the destructor. To call it,
+  /// make sure to rtexit this component (in your terminal):
+  /// rtexit /your_host/sot.rtc
+  void saveLog() const;
+
   /// \brief the sot-hrp2 controller
   dgsot::AbstractSotExternalInterface * m_sotController;
 
@@ -258,11 +265,9 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
   /// \brief Timestamp matching the end of the control loop.
   timeval t1_;
 
-  /// \brief Size of the array logging time spent in control loop.
-  static const unsigned int TIME_ARRAY_SIZE = 100000;
-  
   /// \brief Log time spend during control loops.
-  double timeArray_[TIME_ARRAY_SIZE];
+  boost::array<double, 100000> timeArray_;
+
   /// \brief First unfilled item in timeArray.
   unsigned int timeIndex_;
   
