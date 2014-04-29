@@ -169,9 +169,8 @@ def connectComps():
         rtm.connectPorts(rh.port("gsensor"),  sot.port("accelerometer_0"))
         rtm.connectPorts(rh.port("rfsensor"), sot.port ("forcesRF"))
         rtm.connectPorts(rh.port("lfsensor"), sot.port ("forcesLF"))
-#TODO         rtm.connectPorts(rh.port("rhsensor"), sot.port ("forcesRH"))
-#TODO         rtm.connectPorts(rh.port("lhsensor"), sot.port ("forcesLH"))
-
+        rtm.connectPorts(rh.port("rhsensor"), sot.port ("forcesRH"))
+        rtm.connectPorts(rh.port("lhsensor"), sot.port ("forcesLH"))
     #
     rtm.connectPorts(seq.port("qRef"),    sh.port("qIn"))
     rtm.connectPorts(seq.port("basePos"), sh.port("basePosIn"))
@@ -215,12 +214,16 @@ def setupLogger():
     log_svc.add("TimedDoubleSeq", "zmpRefKpg")
     log_svc.add("TimedDoubleSeq", "basePos")
     log_svc.add("TimedDoubleSeq", "rpy")
-    log_svc.add("TimedDoubleSeq","forceL")
-    log_svc.add("TimedDoubleSeq","forceR")
+    log_svc.add("TimedDoubleSeq","forceLF")
+    log_svc.add("TimedDoubleSeq","forceRF")
+    log_svc.add("TimedDoubleSeq","forceLH")
+    log_svc.add("TimedDoubleSeq","forceRH")
 
     rtm.connectPorts(rh.port("q"), log.port("q"))
-    rtm.connectPorts(rh.port("rfsensor"), log.port("forceR"))
-    rtm.connectPorts(rh.port("lfsensor"), log.port("forceL"))    
+    rtm.connectPorts(rh.port("rfsensor"), log.port("forceRF"))
+    rtm.connectPorts(rh.port("lfsensor"), log.port("forceLF"))
+    rtm.connectPorts(rh.port("rhsensor"), log.port("forceRH"))
+    rtm.connectPorts(rh.port("lhsensor"), log.port("forceLH"))
     rtm.connectPorts(sh.port("qOut"), log.port("qOutsh"))
     rtm.connectPorts(sot.port("qRef"), log.port("qRefsot"))
     if useStabilizerComp:
