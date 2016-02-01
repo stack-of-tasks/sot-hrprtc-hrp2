@@ -11,11 +11,14 @@ INCLUDE(cmake/boost.cmake)
 INCLUDE(cmake/openhrp.cmake)
 
 SET(PROJECT_NAME hrprtc-hrp2-rtc)
+SET(PROJECT_INSTALL_NAME sot-hrprtc-hrp2)
 SET(PROJECT_DESCRIPTION "RTC HRP Real-Time Component.")
 SET(PROJECT_URL "https://github.com/stack-of-tasks/sot-hrprtc-hrp2.git")
 
 # Disable -Werror on Unix for now.
 SET(CXX_DISABLE_WERROR True)
+
+OPTION(ROBOTPKG "Build for Robotpkg" OFF)
 
 SETUP_PROJECT()
 
