@@ -79,8 +79,10 @@ RtcStackOfTasks::RtcStackOfTasks(RTC::Manager* manager)
     m_pRefOut("pRef", m_pRef),
     m_rpyRefOut("rpyRef", m_rpyRef),
     m_accRefOut("accRef", m_accRef),
+    timeIndex_(0),
     manager_(manager),
-    initialize_library_(false)
+    initialize_library_(false),
+    startupThread_()
     // </rtc-template>
 {
   RESETDEBUG5();
@@ -91,6 +93,23 @@ RtcStackOfTasks::RtcStackOfTasks(RTC::Manager* manager)
 
 RtcStackOfTasks::~RtcStackOfTasks()
 {
+  saveLog();
+}
+
+void RtcStackOfTasks::saveLog() const
+{
+  std::string filename ("/tmp/rtc-log-time.txt");
+  std::ofstream logTime (filename.c_str());
+  if(logTime.is_open())
+  {
+    for(unsigned i=0;i<std::min(timeIndex_, timeArray_.size()); ++i)
+      logTime << i << "   " << "   " << timeArray_[i] << std::endl;
+    logTime.close();
+  }
+  else
+  {
+    ODEBUG5("Unable to open '" << filename <<"' to save the log'");
+  }
 }
 
 void RtcStackOfTasks::readConfig()
@@ -99,7 +118,6 @@ void RtcStackOfTasks::readConfig()
   ODEBUG5("Nb dofs:" << robot_config_.nb_dofs);
   ODEBUG5("Nb force sensors:" << robot_config_.nb_force_sensors);
   m_qRef.data.length(robot_config_.nb_dofs);  
-
 }
 
 void RtcStackOfTasks::LoadSot()
@@ -475,10 +493,10 @@ void
 RtcStackOfTasks::logTime (const timeval& t0, const timeval& t1)
 {
   double dt =
-    (t1.tv_sec - t0.tv_sec) * 1000.
-    + (t1.tv_usec - t0.tv_usec + 0.) / 1000.;
-  
-  if (timeIndex_ < TIME_ARRAY_SIZE)
+    (t1.tv_sec - t0.tv_sec)
+    + (t1.tv_usec - t0.tv_usec + 0.) / 1e6;
+
+  if (timeIndex_ < timeArray_.size())
     timeArray_[timeIndex_++] = dt;
 }
 
@@ -513,18 +531,32 @@ RTC::ReturnCode_t RtcStackOfTasks::onDeactivated(RTC::UniqueId ec_id)
 }
 */
 
+void RtcStackOfTasks::loadAndStart()
+{
+  readConfig();
+  LoadSot();
+  if (m_angleInitIn.isNew())
+    fillAngles(sensorsIn_,true);
+  initialize_library_ = true;
+}
+
+
 RTC::ReturnCode_t RtcStackOfTasks::onExecute(RTC::UniqueId /* ec_id */)
 {
   ODEBUG("onExecute - start");
   ODEBUG("Active configuration set:");
-  if (!initialize_library_)
-    {
-      readConfig();
-      LoadSot();
-      if (m_angleInitIn.isNew())
-        fillAngles(sensorsIn_,true);
-      initialize_library_ = true;
-    }
+
+  // start the initialization thread
+  if (initialize_library_ == false && !startupThread_)
+  {
+    startupThread_.reset(new boost::thread(&RtcStackOfTasks::loadAndStart, this));
+  }
+  // destroy the initialization thread when done
+  else if (initialize_library_ == true  && startupThread_)
+  {
+    startupThread_->join();
+    startupThread_.reset();
+  }
 
   if (!started_)
     {

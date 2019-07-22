@@ -90,10 +90,12 @@ def goHalfSitting(tm=bodyinfo.timeToHalfsitPose, wait=True):
         seq_svc.waitInterpolation()
 
 def stOn():
-    st.setProperty("isEnabled", "1")
+    if useStabilizerComp:
+        st.setProperty("isEnabled", "1")
 
 def stOff():
-    st.setProperty("isEnabled", "0")
+    if useStabilizerComp:
+        st.setProperty("isEnabled", "0")
 
 def sotOn():
     sot.setProperty("is_enabled", "1")
